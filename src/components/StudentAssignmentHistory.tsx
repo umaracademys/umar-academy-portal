@@ -7,6 +7,7 @@ import { Assignment } from '../types/assignment';
 import HomeworkDisplay from './HomeworkDisplay';
 import { MistakeBadgeHighlight } from './workflow/MistakeBadgeHighlight';
 import ClassworkEntryCard from './ClassworkEntryCard';
+import Button from './ui/Button';
 
 interface StudentAssignmentHistoryProps {
   studentId: string;
@@ -499,21 +500,22 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Compact Header */}
-        <div className="px-4 py-2.5 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="px-4 sm:px-5 py-4 border-b border-gray-200 bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-gray-900">
-                Assignment History
-              </h2>
-              <p className="text-xs text-gray-600 mt-0.5">
-                {student?.fullName || 'Student'} • {filteredAssignments.length} assignment{filteredAssignments.length !== 1 ? 's' : ''}
+              <h2 className="heading-page">Assignment history</h2>
+              <p className="caption mt-1 text-gray-600">
+                Past assignments you&apos;ve completed
               </p>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-[44px]"
                 onClick={async () => {
                   try {
                     if (refreshDataLight && typeof refreshDataLight === 'function') {
@@ -526,37 +528,30 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                     alert('Failed to refresh data. Please try again.');
                   }
                 }}
-                className="px-2 py-1 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
                 title="Refresh"
               >
                 Refresh
-              </button>
+              </Button>
               {onCreateAssignment && (
-                <button
-                  onClick={onCreateAssignment}
-                  className="px-2.5 py-1 bg-primary text-white rounded text-xs font-medium hover:bg-primary/90 transition-colors"
-                >
+                <Button variant="primary" size="sm" onClick={onCreateAssignment}>
                   + New
-                </button>
+                </Button>
               )}
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 text-lg font-bold w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200"
-              >
-                ×
-              </button>
+              <Button variant="ghost" size="sm" onClick={onClose} className="min-w-[44px] min-h-[44px] p-0 text-gray-500 hover:text-gray-700" aria-label="Close">
+                Close
+              </Button>
             </div>
           </div>
         </div>
 
-        {/* Compact Filter */}
-        <div className="px-4 py-2 border-b border-gray-200 bg-white">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-gray-700">Status:</label>
+        {/* Filter */}
+        <div className="px-4 sm:px-5 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-3">
+            <label className="caption font-medium text-gray-700">Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-primary focus:border-primary"
+              className="body-text px-3 py-2.5 min-h-[44px] border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary"
             >
               <option value="all">All</option>
               <option value="active">Active</option>
@@ -569,8 +564,9 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
         {/* Compact Content */}
         <div className="flex-1 overflow-y-auto p-3">
           {filteredAssignments.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-sm text-gray-600">No assignments found</p>
+            <div className="text-center py-10">
+              <p className="body-text text-gray-700 mb-1">No past assignments</p>
+              <p className="caption text-gray-600">Completed assignments will be saved here</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -598,52 +594,57 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                       return (
                         <div
                           key={assignment.id}
-                          className="border border-gray-200 rounded overflow-hidden"
+                          className="bg-white rounded-lg border border-gray-200 overflow-hidden"
                         >
-                          {/* Compact Assignment Header */}
-                          <div
-                            className="px-3 py-2 bg-white hover:bg-gray-50 cursor-pointer"
-                            onClick={() => toggleAssignment(assignment.id)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 flex-1">
-                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                                  assignment.status === 'active' ? 'bg-blue-100 text-blue-800' :
-                                  assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {assignment.status || 'active'}
-                                </span>
-                                <span className="text-xs text-gray-600">
-                                  {formatDate(assignment.createdAt)}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {assignment.assignedByName}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                {onEditAssignment && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onEditAssignment(assignment.id);
-                                    }}
-                                    className="px-2 py-0.5 text-xs font-medium text-primary border border-primary rounded hover:bg-primary hover:text-white transition-colors"
-                                  >
-                                    Edit
-                                  </button>
-                                )}
-                                <button
+                          {/* Assignment row: Name, Date, Status, View details */}
+                          <div className="px-3 py-2 flex flex-wrap items-center justify-between gap-2 min-h-[44px]">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                {assignment.status === 'active' ? 'Active' : assignment.status === 'completed' ? 'Submitted' : assignment.status === 'archived' ? 'Reviewed' : assignment.status || 'Active'}
+                              </span>
+                              <span className="body-text text-gray-700 truncate">
+                                {assignment.assignedByName || 'Assignment'}
+                              </span>
+                              <span className="caption text-gray-500 shrink-0">
+                                {formatDate(assignment.createdAt)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="min-h-[44px]"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleAssignment(assignment.id);
+                                }}
+                              >
+                                View details
+                              </Button>
+                              {onEditAssignment && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="min-h-[44px]"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteAssignment(assignment.id);
+                                    onEditAssignment(assignment.id);
                                   }}
-                                  className="px-2 py-0.5 text-xs font-medium text-red-600 border border-red-300 rounded hover:bg-red-50 transition-colors"
                                 >
-                                  Delete
-                                </button>
-                                <span className="text-gray-400 text-xs">{isExpanded ? '▼' : '▶'}</span>
-                              </div>
+                                  Edit
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="min-h-[44px] border-gray-300 text-gray-700 hover:bg-gray-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteAssignment(assignment.id);
+                                }}
+                              >
+                                Remove
+                              </Button>
                             </div>
                           </div>
 
@@ -1097,26 +1098,32 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                             />
                                           </div>
                                           <div className="flex gap-2">
-                                            <button
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
                                               onClick={() => {
                                                 setGradingAssignment(null);
                                                 setGradeData({ feedback: '', grade: '' });
                                               }}
-                                              className="px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors"
                                             >
                                               Cancel
-                                            </button>
-                                            <button
-                                              onClick={() => handleGradeHomework(assignment.id)}
+                                            </Button>
+                                            <Button
+                                              variant="primary"
+                                              size="sm"
+                                              className="min-h-[44px]"
                                               disabled={isGrading}
-                                              className="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                              isLoading={isGrading}
+                                              onClick={() => handleGradeHomework(assignment.id)}
                                             >
-                                              {isGrading ? 'Grading...' : 'Submit'}
-                                            </button>
+                                              {isGrading ? 'Saving...' : 'Save'}
+                                            </Button>
                                           </div>
                                         </div>
                                       ) : (
-                                        <button
+                                        <Button
+                                          variant="primary"
+                                          size="sm"
                                           onClick={() => {
                                             setGradingAssignment(assignment.id);
                                             const submission = assignment.homework.submission;
@@ -1125,12 +1132,11 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                               grade: submission?.grade?.toString() || '' 
                                             });
                                           }}
-                                          className="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 transition-colors"
                                         >
                                           {assignment.homework.submission?.grade !== undefined && assignment.homework.submission?.grade !== null 
                                             ? 'Update Grade' 
                                             : 'Grade Homework'}
-                                        </button>
+                                        </Button>
                                       )}
                                     </div>
                                   )}

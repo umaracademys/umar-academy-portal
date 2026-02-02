@@ -190,11 +190,47 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--color-background);
-  color: var(--color-primary);
-  line-height: 1.6;
+  color: var(--color-gray-800);
+  line-height: 1.5;
   font-size: var(--font-size-base);
   font-weight: 400;
   letter-spacing: -0.01em;
+}
+
+/* Design system: clear hierarchy (page > section > body) */
+.heading-page {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--color-gray-900);
+}
+@media (min-width: 640px) {
+  .heading-page {
+    font-size: 1.75rem;
+  }
+}
+.heading-section {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-gray-800);
+}
+.heading-card {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-gray-800);
+}
+.body-text {
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--color-gray-700);
+  line-height: 1.5;
+}
+.caption {
+  font-size: 0.8125rem;
+  color: var(--color-gray-500);
+  line-height: 1.4;
 }
 
 code {

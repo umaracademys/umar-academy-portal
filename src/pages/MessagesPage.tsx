@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Header from '../components/Header';
+import Sidebar from '../components/Sidebar';
+import AppLayout from '../components/layout/AppLayout';
+import TeacherStudentMessage from '../components/TeacherStudentMessage';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
-import Header from '../components/Header';
-import TeacherStudentMessage from '../components/TeacherStudentMessage';
-import Card from '../components/Card';
 
 const MessagesPage: React.FC = () => {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ const MessagesPage: React.FC = () => {
     student?: any;
   } | null>(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     loadConversations();
@@ -163,75 +165,90 @@ const MessagesPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
-          <p className="text-gray-600 mt-2">
-            {user?.role === 'teacher' && 'Communicate with your students'}
-            {user?.role === 'student' && 'Communicate with your teachers'}
-            {user?.role === 'admin' && 'View all teacher-student communications'}
-          </p>
+      <Header onMenuClick={() => setSidebarOpen((o) => !o)} />
+      <AppLayout
+        sidebar={
+          <Sidebar
+            activeSection="messages"
+            onSectionChange={() => {}}
+            isMobileOpen={sidebarOpen}
+            onMobileToggle={() => setSidebarOpen((o) => !o)}
+            onMobileClose={() => setSidebarOpen(false)}
+          />
+        }
+        sidebarOpen={sidebarOpen}
+        onOverlayClick={() => setSidebarOpen(false)}
+        maxWidth="7xl"
+      >
+        <div className="space-y-4 sm:space-y-6">
+          <div>
+            <h1 className="heading-page">Messages</h1>
+            <p className="caption mt-1 text-gray-600">
+              {user?.role === 'teacher' && 'Talk with your students'}
+              {user?.role === 'student' && 'Talk with your teachers'}
+              {user?.role === 'admin' && 'Teacher–student conversations'}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-4 sm:px-5 py-4 sm:py-5">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-12" role="status">
+                  <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-3" />
+                  <p className="body-text text-gray-600 mt-2">Loading...</p>
+                </div>
+              ) : conversations.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="body-text text-gray-700">No messages yet</p>
+                  <p className="caption mt-1 text-gray-600">
+                    {user?.role === 'teacher' && 'Start a conversation from the dashboard'}
+                    {user?.role === 'student' && 'Your teachers can message you here'}
+                    {user?.role === 'admin' && 'Conversations will appear here'}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {conversations.map((conv, idx) => (
+                    <button
+                      type="button"
+                      key={idx}
+                      onClick={() => handleOpenConversation(conv)}
+                      className="w-full text-left cursor-pointer rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300 transition min-h-[44px] flex flex-col justify-center focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="heading-card truncate">
+                            {getConversationName(conv)}
+                          </h3>
+                          {conv.lastMessage && (
+                            <p className="body-text text-gray-600 mt-0.5 line-clamp-2">
+                              {conv.lastMessage.message}
+                            </p>
+                          )}
+                        </div>
+                        {conv.unreadCount > 0 && (
+                          <span className="shrink-0 px-2 py-0.5 bg-gray-800 text-white text-xs font-medium rounded-full">
+                            {conv.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between caption text-gray-500">
+                        <span>
+                          {conv.messages.length} message{conv.messages.length !== 1 ? 's' : ''}
+                        </span>
+                        {conv.lastMessage && (
+                          <span>{formatDate(conv.lastMessage.createdAt)}</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading conversations...</p>
-          </div>
-        ) : conversations.length === 0 ? (
-          <Card>
-            <div className="text-center py-12">
-              <p className="text-lg font-semibold text-gray-700 mb-2">No conversations yet</p>
-              <p className="text-sm text-gray-500">
-                {user?.role === 'teacher' && 'Start messaging your students from the Teacher Dashboard'}
-                {user?.role === 'student' && 'Your teachers will be able to message you here'}
-                {((user as any)?.role === 'admin' || (user as any)?.role === 'superadmin') ? 'No messages between teachers and students yet' : ''}
-              </p>
-            </div>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {conversations.map((conv, idx) => (
-              <Card key={idx}>
-                <div
-                  onClick={() => handleOpenConversation(conv)}
-                  className="cursor-pointer hover:bg-gray-50 transition p-4 rounded-lg border-2 border-transparent hover:border-primary"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg text-primary">
-                        {getConversationName(conv)}
-                      </h3>
-                      {conv.lastMessage && (
-                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                          {conv.lastMessage.message}
-                        </p>
-                      )}
-                    </div>
-                    {conv.unreadCount > 0 && (
-                      <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
-                        {conv.unreadCount}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>
-                      {conv.messages.length} message{conv.messages.length !== 1 ? 's' : ''}
-                    </span>
-                    {conv.lastMessage && (
-                      <span>{formatDate(conv.lastMessage.createdAt)}</span>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Message Modal */}
+        {/* Message Modal */}
       {showMessageModal && selectedConversation && (
         <TeacherStudentMessage
           teacher={selectedConversation.teacher}
@@ -245,6 +262,7 @@ const MessagesPage: React.FC = () => {
           adminCanInitiate={(user as any)?.role === 'admin' || (user as any)?.role === 'superadmin'}
         />
       )}
+      </AppLayout>
     </div>
   );
 };

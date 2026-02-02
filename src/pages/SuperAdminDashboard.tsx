@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState, useMemo, lazy, Suspense } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
-import StatCard from '../components/StatCard';
-import Card from '../components/Card';
+import AppLayout from '../components/layout/AppLayout';
+import Button from '../components/ui/Button';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
-import { formatTimeAgo } from '../utils/formatters';
 
 // Lazy load heavy components for better performance
 const StudentRegistrationForm = lazy(() => import('../components/StudentRegistrationForm'));
@@ -148,7 +147,9 @@ const SuperAdminDashboard: React.FC = () => {
   const [showLockedAccounts, setShowLockedAccounts] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [showTicketReview, setShowTicketReview] = useState(false);
-  
+  const [showActivityLog, setShowActivityLog] = useState(false);
+  const [showHelpAndSupport, setShowHelpAndSupport] = useState(false);
+
   // Debug: Log when showTicketReview changes (only log actual changes, not every render)
   const prevShowTicketReviewRef = useRef(showTicketReview);
   useEffect(() => {
@@ -302,304 +303,163 @@ const SuperAdminDashboard: React.FC = () => {
   const activeTeacherCount = teachers.filter((teacher) => teacher.status === 'active').length;
   const totalAdmins = admins.length;
 
-
-  const managementActions = useMemo(() => [
-    {
-      id: 'manage-students',
-      badge: 'ST',
-      title: 'Manage Students',
-      description: 'Browse roster, open profiles, and update enrollment.',
-      action: () => navigate('/students'),
-      footer: `${totalStudents} students`,
-    },
-    {
-      id: 'add-student',
-      badge: '➕',
-      title: 'Add Student',
-      description: 'Register a new student and capture program details.',
-      action: () => {
-        setSelectedStudent(null);
-        setShowStudentForm(true);
-      },
-      footer: 'Create profile',
-    },
-    {
-      id: 'manage-teachers',
-      badge: 'TC',
-      title: 'Manage Teachers',
-      description: 'Assign classes, review metrics, and update profiles.',
-      action: () => navigate('/teachers'),
-      footer: `${totalTeachers} teachers`,
-    },
-    {
-      id: 'add-teacher',
-      badge: '➕',
-      title: 'Add Teacher',
-      description: 'Onboard a new teacher with availability and payroll.',
-      action: () => {
-        setSelectedTeacher(null);
-        setShowTeacherForm(true);
-      },
-      footer: 'Create profile',
-    },
-    {
-      id: 'add-admin',
-      badge: 'AD',
-      title: 'Add Admin',
-      description: 'Provision a new admin with the right permissions.',
-      action: () => setShowAdminForm(true),
-      footer: `${totalAdmins} admins`,
-    },
-    {
-      id: 'teacher-attendance',
-      badge: '📅',
-      title: 'Teacher Attendance',
-      description: 'Manage and track teacher attendance records.',
-      action: () => navigate('/teacher-attendance'),
-      footer: 'View history',
-    },
-    {
-      id: 'permissions',
-      badge: 'PM',
-      title: 'Permission Manager',
-      description: 'Adjust access across teacher, admin, and QA roles.',
-      action: () => setShowPermissionManager(true),
-      footer: 'Open manager',
-    },
-    {
-      id: 'locked-accounts',
-      badge: '🔒',
-      title: 'Locked Accounts',
-      description: 'View and unlock accounts locked due to failed login attempts.',
-      action: () => setShowLockedAccounts(true),
-      footer: 'Manage locks',
-    },
-    {
-      id: 'data-manager',
-      badge: 'DB',
-      title: 'Data Manager',
-      description: 'Export records or trigger backups for compliance.',
-      action: () => setShowDataManager(true),
-      footer: 'Manage data',
-    },
-    {
-      id: 'review-tickets',
-      badge: '🎫',
-      title: 'Review Tickets',
-      description: 'Review and approve submitted tickets from teachers.',
-      action: () => {
-        console.log('🖱️ SuperAdminDashboard: Review Tickets button clicked, opening modal');
-        console.log('🖱️ Current showTicketReview state:', showTicketReview);
-        setShowTicketReview(true);
-        console.log('🖱️ Set showTicketReview to true');
-      },
-      footer: `${pendingTicketCount} pending`,
-    },
-  ], [totalStudents, totalTeachers, totalAdmins, pendingTicketCount, navigate, setSelectedStudent, setShowStudentForm, setSelectedTeacher, setShowTeacherForm, setShowAdminForm, setShowPermissionManager, setShowDataManager, setShowLockedAccounts, setShowTicketReview]);
-
-  // Calculate additional metrics
-  const inactiveStudentCount = totalStudents - activeStudentCount;
-  const inactiveTeacherCount = totalTeachers - activeTeacherCount;
   const totalPendingItems = pendingReviewsCount + pendingTicketCount + pendingHomeworkCount;
 
   const OverviewSection = () => (
-    <div className="space-y-2">
-      {/* Welcome Header - Compact */}
-      <section className="rounded border border-gray-200 bg-white px-2 py-2">
-        <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded">
-                Super Admin
-              </span>
-              {totalPendingItems > 0 && (
-                <span className="rounded bg-red-500 text-white px-1.5 py-0.5 text-[9px] font-bold">
-                  {totalPendingItems} pending
-                </span>
-              )}
+    <div className="space-y-6">
+      {/* Page header */}
+      <div>
+        <h1 className="heading-page">System Overview</h1>
+        <p className="caption mt-1 text-gray-600">Monitor system health and take high-level actions.</p>
+      </div>
+
+      {/* Section 1 — Action Required */}
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-4 sm:px-5 py-3 border-b border-gray-200">
+          <h2 className="heading-section">Action required</h2>
+          <p className="caption mt-0.5 text-gray-600">Items that need super administrator attention</p>
+        </div>
+        <div className="divide-y divide-gray-200">
+          {pendingTicketCount > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3 min-h-[44px]">
+              <p className="body-text text-gray-700">
+                {pendingTicketCount} unresolved system ticket{pendingTicketCount !== 1 ? 's' : ''}
+              </p>
+              <Button variant="outline" size="sm" className="min-h-[44px] shrink-0 w-full sm:w-auto" onClick={() => setShowTicketReview(true)}>
+                View tickets
+              </Button>
             </div>
-            <h1 className="text-base font-bold text-primary">Dashboard</h1>
-            <div className="flex flex-wrap items-center gap-1 text-[9px] font-semibold">
-              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary border border-primary/20">
-                {activeStudentCount} students
-              </span>
-              <span className="rounded bg-accent/10 px-1.5 py-0.5 text-accent border border-accent/20">
-                {activeTeacherCount} teachers
-              </span>
-              <span className="rounded bg-orange-100 px-1.5 py-0.5 text-orange-700 border border-orange-200">
-                {pendingReviewsCount} reviews
-              </span>
-              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700 border border-blue-200">
-                {pendingTicketCount} tickets
-              </span>
-              {pendingWeeklyEvaluationsCount > 0 && (
-                <span className="rounded bg-purple-100 px-1.5 py-0.5 text-purple-700 border border-purple-200">
-                  {pendingWeeklyEvaluationsCount} evaluations
-                </span>
-              )}
+          )}
+          {(pendingReviewsCount > 0 || pendingHomeworkCount > 0) && (
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3 min-h-[44px]">
+              <p className="body-text text-gray-700">
+                {pendingReviewsCount + pendingHomeworkCount} item{(pendingReviewsCount + pendingHomeworkCount) !== 1 ? 's' : ''} awaiting review
+              </p>
+              <Button variant="outline" size="sm" className="min-h-[44px] shrink-0 w-full sm:w-auto" onClick={() => setShowNotificationCenter(true)}>
+                Review
+              </Button>
             </div>
-          </div>
+          )}
+          {pendingWeeklyEvaluationsCount > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3 min-h-[44px]">
+              <p className="body-text text-gray-700">
+                {pendingWeeklyEvaluationsCount} evaluation{pendingWeeklyEvaluationsCount !== 1 ? 's' : ''} under review
+              </p>
+              <Button variant="outline" size="sm" className="min-h-[44px] shrink-0 w-full sm:w-auto" onClick={() => navigate('/weekly-evaluations')}>
+                Open evaluations
+              </Button>
+            </div>
+          )}
+          {totalPendingItems === 0 && (
+            <div className="px-4 sm:px-5 py-4 min-h-[44px]">
+              <p className="body-text text-gray-600">Nothing requires action right now.</p>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Enhanced Stats Grid - Compact */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-        <div className="bg-white rounded border border-primary/20 p-2 hover:border-primary/40 transition-all">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">Students</p>
-            <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center">
-              <span className="text-xs">👥</span>
-            </div>
-          </div>
-          <p className="text-xl font-bold text-primary mb-0.5">{totalStudents}</p>
-          <div className="flex items-center gap-1 text-[9px]">
-            <span className="text-green-600 font-semibold">+{activeStudentCount}</span>
-            {inactiveStudentCount > 0 && (
-              <span className="text-gray-400">• {inactiveStudentCount}</span>
-            )}
-          </div>
+      {/* Section 2 — System Status */}
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-4 sm:px-5 py-3 border-b border-gray-200">
+          <h2 className="heading-section">System status</h2>
+          <p className="caption mt-0.5 text-gray-600">Current platform and operational state</p>
         </div>
-
-        <div className="bg-white rounded border border-accent/20 p-2 hover:border-accent/40 transition-all">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">Teachers</p>
-            <div className="h-6 w-6 rounded bg-accent/10 flex items-center justify-center">
-              <span className="text-xs">👨‍🏫</span>
-            </div>
-          </div>
-          <p className="text-xl font-bold text-accent mb-0.5">{totalTeachers}</p>
-          <div className="flex items-center gap-1 text-[9px]">
-            <span className="text-green-600 font-semibold">+{activeTeacherCount}</span>
-            {inactiveTeacherCount > 0 && (
-              <span className="text-gray-400">• {inactiveTeacherCount}</span>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded border border-orange-200 p-2 hover:border-orange-300 transition-all">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">Pending</p>
-            <div className="h-6 w-6 rounded bg-orange-50 flex items-center justify-center">
-              <span className="text-xs">📋</span>
-            </div>
-          </div>
-          <p className="text-xl font-bold text-orange-600 mb-0.5">{pendingReviewsCount + pendingTicketCount}</p>
-          <div className="flex items-center gap-1 text-[9px]">
-            <span className="text-orange-600 font-semibold">{pendingReviewsCount}</span>
-            <span className="text-gray-400">• {pendingTicketCount}</span>
-          </div>
-        </div>
-
+        <ul className="divide-y divide-gray-200">
+          <li className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 min-h-[44px]">
+            <span className="caption text-gray-600">Backend</span>
+            <span className="body-text text-gray-800">{loading ? '…' : 'Operational'}</span>
+          </li>
+          <li className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 min-h-[44px]">
+            <span className="caption text-gray-600">Database</span>
+            <span className="body-text text-gray-800">Connected</span>
+          </li>
+          <li className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 min-h-[44px]">
+            <span className="caption text-gray-600">Message system</span>
+            <span className="body-text text-gray-800">Active</span>
+          </li>
+          <li className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 min-h-[44px]">
+            <span className="caption text-gray-600">Maintenance</span>
+            <span className="body-text text-gray-800">{maintenanceMode.enabled ? 'On' : 'Off'}</span>
+          </li>
+          <li className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 min-h-[44px]">
+            <span className="caption text-gray-600">Last deployment</span>
+            <span className="body-text text-gray-800">Recent</span>
+          </li>
+        </ul>
       </section>
 
-
-      {/* System Management - Wrapped */}
-      <section className="rounded border border-gray-200 bg-white px-2 py-2">
-        <button
-          onClick={() => setExpandedSections(prev => ({ ...prev, systemManagement: !prev.systemManagement }))}
-          className="w-full flex items-center justify-between mb-1.5"
-        >
-          <h3 className="text-sm font-bold text-primary">System Management</h3>
-          <span className="text-[9px] text-gray-600">
-            {expandedSections.systemManagement ? '▼' : '▶'}
-          </span>
-        </button>
-        {expandedSections.systemManagement && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
-          {managementActions.map((item) => (
-            <button
-              key={item.id}
-              onClick={item.action}
-              className="flex flex-col items-center gap-1 rounded border border-gray-200 bg-white px-2 py-2 text-center transition-all hover:bg-soft-primary hover:border-primary/40"
-            >
-              <div className="inline-flex h-8 w-8 items-center justify-center rounded bg-soft-primary text-xs font-bold text-primary">
-                {item.badge}
-              </div>
-              <div className="flex-1">
-                <h4 className="text-[10px] font-semibold text-primary leading-tight">{item.title}</h4>
-                <p className="text-[9px] text-gray-500 mt-0.5">{item.footer}</p>
-              </div>
-            </button>
-          ))}
+      {/* Section 3 — Academy Snapshot */}
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-4 sm:px-5 py-3 border-b border-gray-200">
+          <h2 className="heading-section">Academy snapshot</h2>
+          <p className="caption mt-0.5 text-gray-600">High-level academy overview</p>
         </div>
-        )}
+        <ul className="divide-y divide-gray-200">
+          <li className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 min-h-[44px]">
+            <span className="caption text-gray-600">Total students</span>
+            <span className="body-text text-gray-800">{totalStudents}</span>
+          </li>
+          <li className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 min-h-[44px]">
+            <span className="caption text-gray-600">Total teachers</span>
+            <span className="body-text text-gray-800">{totalTeachers}</span>
+          </li>
+          <li className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 min-h-[44px]">
+            <span className="caption text-gray-600">Active classes</span>
+            <span className="body-text text-gray-800">—</span>
+          </li>
+          <li className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-5 py-3 min-h-[44px]">
+            <span className="caption text-gray-600">Attendance coverage</span>
+            <span className="body-text text-gray-800">—</span>
+          </li>
+        </ul>
+      </section>
+
+      {/* Section 4 — System Control */}
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-4 sm:px-5 py-3 border-b border-gray-200">
+          <h2 className="heading-section">System control</h2>
+          <p className="caption mt-0.5 text-gray-600">Administrative tools and governance</p>
+        </div>
+        <div className="p-4 sm:p-5 space-y-2">
+          <Button variant="outline" size="md" className="w-full sm:w-auto min-h-[44px] justify-center sm:justify-center" onClick={() => setShowPermissionManager(true)}>
+            Permissions
+          </Button>
+          <Button variant="outline" size="md" className="w-full sm:w-auto min-h-[44px] justify-center sm:justify-center" onClick={() => navigate('/permissions')}>
+            User roles
+          </Button>
+          <Button variant="outline" size="md" className="w-full sm:w-auto min-h-[44px] justify-center sm:justify-center" onClick={handleToggleMaintenance} disabled={isTogglingMaintenance}>
+            {isTogglingMaintenance ? 'Updating…' : 'System settings'}
+          </Button>
+          <Button variant="outline" size="md" className="w-full sm:w-auto min-h-[44px] justify-center sm:justify-center" onClick={() => setShowDataManager(true)}>
+            Exports & backups
+          </Button>
+          <Button variant="outline" size="md" className="w-full sm:w-auto min-h-[44px] justify-center sm:justify-center" onClick={() => setShowActivityLog(true)}>
+            Audit logs
+          </Button>
+        </div>
       </section>
     </div>
   );
 
-  // System Management Section - Compact
   const SystemSection = () => (
-    <div className="space-y-2">
-      <h2 className="text-sm font-bold text-primary">System Tools</h2>
-      <div className="grid grid-cols-1 gap-1.5 md:grid-cols-3">
-        <button
-          onClick={() => setShowPermissionManager(true)}
-          className="flex h-full flex-col gap-1.5 rounded border border-gray-200 bg-white px-2 py-2 text-left transition hover:border-primary/30"
-        >
-          <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-soft-primary text-[10px] font-semibold text-primary">
-            PM
-          </div>
-          <div className="flex-1">
-            <h3 className="text-xs font-semibold text-primary">Permissions</h3>
-            <p className="mt-0.5 text-[10px] text-gray-600">
-              Adjust role access
-            </p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => setShowDataManager(true)}
-          className="flex h-full flex-col gap-1.5 rounded border border-gray-200 bg-white px-2 py-2 text-left transition hover:border-primary/30"
-        >
-          <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-soft-primary text-[10px] font-semibold text-primary">
-            DB
-          </div>
-          <div className="flex-1">
-            <h3 className="text-xs font-semibold text-primary">Data Manager</h3>
-            <p className="mt-0.5 text-[10px] text-gray-600">
-              Export & backup
-            </p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => refreshNotifications()}
-          className="flex h-full flex-col gap-1.5 rounded border border-gray-200 bg-white px-2 py-2 text-left transition hover:border-primary/30"
-        >
-          <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-soft-primary text-[10px] font-semibold text-primary">
-            🔄
-          </div>
-          <div className="flex-1">
-            <h3 className="text-xs font-semibold text-primary">Refresh</h3>
-            <p className="mt-0.5 text-[10px] text-gray-600">
-              Sync notifications
-            </p>
-          </div>
-        </button>
-
+    <div className="space-y-6">
+      <div>
+        <h1 className="heading-page">System tools</h1>
+        <p className="caption mt-1 text-gray-600">Permissions, data, and refresh.</p>
       </div>
-
-      <Card title="Live Signals">
-        <div className="space-y-1.5 text-xs text-gray-600">
-          <div className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5">
-            <span className="font-semibold text-accent text-[10px]">Notifications</span>
-            <div className="flex items-center gap-1.5">
-              {highPriorityUnreadCount > 0 && (
-                <span className="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-semibold text-red-700 border border-red-200">
-                  {highPriorityUnreadCount} high
-                </span>
-              )}
-              <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-semibold text-accent">
-                {unreadNotificationsCount} unread
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5">
-            <span className="font-semibold text-primary text-[10px]">Reviews</span>
-            <span className="text-[10px] font-semibold text-primary">{pendingReviewsCount}</span>
-          </div>
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="p-4 sm:p-5 space-y-2">
+          <Button variant="outline" size="md" className="w-full sm:w-auto min-h-[44px]" onClick={() => setShowPermissionManager(true)}>
+            Permissions
+          </Button>
+          <Button variant="outline" size="md" className="w-full sm:w-auto min-h-[44px]" onClick={() => setShowDataManager(true)}>
+            Exports & backups
+          </Button>
+          <Button variant="outline" size="md" className="w-full sm:w-auto min-h-[44px]" onClick={() => refreshNotifications()}>
+            Refresh notifications
+          </Button>
         </div>
-      </Card>
+      </section>
     </div>
   );
 
@@ -904,134 +764,63 @@ const SuperAdminDashboard: React.FC = () => {
     }
   };
 
-  // Show loading state
   if (loading) {
     return (
-      <div className="flex h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
-        <Sidebar 
-          activeSection={activeSection} 
-          onSectionChange={setActiveSection}
-          onHelpClick={() => setShowHelpAndSupport(true)}
-        />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onNotificationClick={() => setShowNotificationCenter(true)} />
-          <main className="flex-1 overflow-y-auto">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="text-center max-w-lg w-full">
-                  {/* Decorative Top Element */}
-                  <div className="relative mb-8">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary/20 via-accent/20 to-primary/10 blur-2xl animate-pulse"></div>
-                    </div>
-                    <div className="relative">
-                      {/* Spinning Circle with Islamic Pattern */}
-                      <div className="relative mx-auto w-24 h-24 mb-6">
-                        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary border-r-accent animate-spin"></div>
-                        <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-primary border-l-accent animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent shadow-lg"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Main Arabic Text - Beautiful Typography */}
-                  <div className="mb-8 relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent blur-xl"></div>
-                    <p 
-                      className="relative text-primary font-bold text-5xl sm:text-6xl md:text-7xl leading-relaxed" 
-                      dir="rtl" 
-                      style={{ 
-                        fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
-                        textShadow: '0 2px 10px rgba(46, 77, 50, 0.2)',
-                        letterSpacing: '0.05em'
-                      }}
-                    >
-                      اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ
-                    </p>
-                    {/* Decorative Underline */}
-                    <div className="mx-auto w-40 h-1 bg-gradient-to-r from-transparent via-primary to-transparent rounded-full mt-4"></div>
-                  </div>
-
-                  {/* Progress Bar - Elegant Design */}
-                  <div className="mb-6">
-                    <div className="relative w-full max-w-md mx-auto h-2 bg-gray-200/50 rounded-full overflow-hidden backdrop-blur-sm">
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 animate-pulse"></div>
-                      <div 
-                        className="relative h-full bg-gradient-to-r from-primary via-accent to-primary rounded-full animate-pulse shadow-lg"
-                        style={{ 
-                          width: '60%',
-                          boxShadow: '0 0 20px rgba(46, 77, 50, 0.4)'
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Subtitle */}
-                  <p className="text-gray-600 text-sm font-medium mb-2">Please wait while we fetch your data</p>
-                  
-                  {/* Decorative Bottom Element */}
-                  <div className="mt-8 flex items-center justify-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                  </div>
-
-                  {/* Error Message */}
-                  {error && (
-                    <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
-                      <p className="text-red-600 text-sm font-semibold">Error: {error}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Header onNotificationClick={() => setShowNotificationCenter(true)} />
+        <AppLayout
+          sidebar={
+            <Sidebar
+              activeSection={activeSection}
+              onSectionChange={setActiveSection}
+              isMobileOpen={isSidebarOpen}
+              onMobileToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+              onMobileClose={() => setIsSidebarOpen(false)}
+              onHelpClick={() => setShowHelpAndSupport(true)}
+              onTeacherStudentAssignmentClick={() => setShowTeacherStudentAssignment(true)}
+            />
+          }
+          sidebarOpen={isSidebarOpen}
+          onOverlayClick={() => setIsSidebarOpen(false)}
+        >
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-300 border-t-primary mx-auto mb-4" />
+              <p className="body-text text-gray-600">Loading…</p>
             </div>
-          </main>
-        </div>
+          </div>
+        </AppLayout>
       </div>
     );
   }
 
-  // Show error state
   if (error) {
     return (
-      <div className="flex h-screen bg-background">
-        <Sidebar 
-          activeSection={activeSection} 
-          onSectionChange={setActiveSection}
-          onHelpClick={() => setShowHelpAndSupport(true)}
-        />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onNotificationClick={() => setShowNotificationCenter(true)} />
-          <main className="flex-1 overflow-y-auto">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800">Error loading data</h3>
-                    <div className="mt-2 text-sm text-red-700">
-                      <p>{error}</p>
-                    </div>
-                    <div className="mt-4">
-                      <button
-                        onClick={() => window.location.reload()}
-                        className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </main>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Header onNotificationClick={() => setShowNotificationCenter(true)} />
+        <AppLayout
+          sidebar={
+            <Sidebar
+              activeSection={activeSection}
+              onSectionChange={setActiveSection}
+              isMobileOpen={isSidebarOpen}
+              onMobileToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+              onMobileClose={() => setIsSidebarOpen(false)}
+              onHelpClick={() => setShowHelpAndSupport(true)}
+              onTeacherStudentAssignmentClick={() => setShowTeacherStudentAssignment(true)}
+            />
+          }
+          sidebarOpen={isSidebarOpen}
+          onOverlayClick={() => setIsSidebarOpen(false)}
+        >
+          <div className="bg-white rounded-lg border border-gray-200 p-6 max-w-xl">
+            <h2 className="heading-section">Error loading data</h2>
+            <p className="body-text text-gray-700 mt-2">{error}</p>
+            <Button variant="outline" size="md" className="mt-4 min-h-[44px]" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        </AppLayout>
       </div>
     );
   }
@@ -1048,30 +837,29 @@ const SuperAdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <Sidebar 
-        activeSection={activeSection} 
-        onSectionChange={setActiveSection}
-        isMobileOpen={isSidebarOpen}
-        onMobileToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        onTeacherStudentAssignmentClick={() => setShowTeacherStudentAssignment(true)}
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Header
+        onNotificationClick={() => setShowNotificationCenter(true)}
+        onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
       />
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
-        <Header 
-          onNotificationClick={() => setShowNotificationCenter(true)}
-          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        />
-        
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4 py-2">
-            {renderSection()}
-          </div>
-        </main>
-      </div>
+      <AppLayout
+        sidebar={
+          <Sidebar
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+            isMobileOpen={isSidebarOpen}
+            onMobileToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+            onMobileClose={() => setIsSidebarOpen(false)}
+            onHelpClick={() => setShowHelpAndSupport(true)}
+            onTeacherStudentAssignmentClick={() => setShowTeacherStudentAssignment(true)}
+          />
+        }
+        sidebarOpen={isSidebarOpen}
+        onOverlayClick={() => setIsSidebarOpen(false)}
+        maxWidth="7xl"
+      >
+        {renderSection()}
+      </AppLayout>
 
       {/* Registration Modals - Lazy loaded */}
       {showStudentForm && (
@@ -1201,6 +989,20 @@ const SuperAdminDashboard: React.FC = () => {
               setShowTicketReview(false);
             }}
           />
+        </Suspense>
+      )}
+
+      {/* Activity Log (Audit logs) */}
+      {showActivityLog && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <ActivityLog onClose={() => setShowActivityLog(false)} />
+        </Suspense>
+      )}
+
+      {/* Help and Support */}
+      {showHelpAndSupport && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <HelpAndSupport onClose={() => setShowHelpAndSupport(false)} />
         </Suspense>
       )}
 

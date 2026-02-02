@@ -9,36 +9,17 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { getConversations, getConversationStats, lockConversation, type ConversationListItem } from '../../services/api';
 import Header from '../Header';
 import ConversationCard from './ConversationCard';
 import ProfessionalConversationView from './ProfessionalConversationView';
 import AdminDashboardWidgets from './AdminDashboardWidgets';
 import NewMessageModal from './NewMessageModal';
 
-interface Conversation {
-  _id: string;
-  type: 'teacher_student' | 'pair_teacher';
-  participants: Array<{
-    role: 'teacher' | 'student' | 'admin';
-    userId: string;
-    name: string;
-  }>;
-  locked: boolean;
-  lastMessageAt: string;
-  messageCount: number;
-  unreadCount: number;
-  lastMessage?: {
-    body: string;
-    senderName: string;
-    priority: 'low' | 'normal' | 'high' | 'urgent';
-  };
-}
+type Conversation = ConversationListItem;
 
 const SuperAdminMessagesPage: React.FC = () => {
   const { user } = useAuth();
-  // Handle API base URL - may or may not include /api
-  const API_BASE_RAW = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
-  const API_BASE = API_BASE_RAW.endsWith('/api') ? API_BASE_RAW : `${API_BASE_RAW}/api`;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -68,32 +49,7 @@ const SuperAdminMessagesPage: React.FC = () => {
   const loadConversations = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
-      const params = new URLSearchParams();
-      if (activeTab !== 'all') {
-        params.append('type', activeTab);
-      }
-      
-      const response = await fetch(`${API_BASE}/conversations?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to load conversations');
-      }
-      
-      const data = await response.json();
-      const convs = (data.conversations || []).map((conv: any) => ({
-        ...conv,
-        lastMessage: conv.lastMessageId ? {
-          body: conv.lastMessage?.body || '',
-          senderName: conv.lastMessage?.senderName || '',
-          priority: conv.lastMessage?.priority || 'normal'
-        } : undefined
-      }));
+      const convs = await getConversations(activeTab === 'all' ? undefined : { type: activeTab });
       setConversations(convs);
     } catch (error) {
       console.error('Error loading conversations:', error);
@@ -104,24 +60,13 @@ const SuperAdminMessagesPage: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
-      const response = await fetch(`${API_BASE}/api/conversations/admin/stats`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setStats({
-          totalConversations: data.totalConversations || 0,
-          activeConversations: data.activeConversations || 0,
-          unreadMessages: data.unreadMessages || 0,
-          highPriorityThreads: 0, // Calculate from conversations
-          waitingOver24h: 0 // Calculate from conversations
-        });
-      }
+      const data = await getConversationStats();
+      setStats(prev => ({
+        ...prev,
+        totalConversations: data.totalConversations,
+        activeConversations: data.activeConversations,
+        unreadMessages: data.unreadMessages,
+      }));
     } catch (error) {
       console.error('Error loading stats:', error);
     }
@@ -183,24 +128,10 @@ const SuperAdminMessagesPage: React.FC = () => {
 
   const handleLockConversation = async (conversationId: string, lock: boolean) => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
-      const response = await fetch(
-        `${API_BASE}/api/conversations/${conversationId}/${lock ? 'lock' : 'unlock'}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ reason: lock ? 'Administrative action' : '' })
-        }
-      );
-      
-      if (response.ok) {
-        loadConversations();
-        if (selectedConversation?._id === conversationId) {
-          setSelectedConversation({ ...selectedConversation, locked: lock });
-        }
+      await lockConversation(conversationId, lock);
+      loadConversations();
+      if (selectedConversation?._id === conversationId) {
+        setSelectedConversation({ ...selectedConversation, locked: lock });
       }
     } catch (error) {
       console.error('Error locking conversation:', error);

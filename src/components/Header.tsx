@@ -61,134 +61,80 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => 
   }, [adminNotifications, assignments, recitationTickets, user?.role]);
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-14 sm:h-16 min-h-[56px]">
-          <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
-            {/* Mobile Menu Button */}
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 safe-top">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex justify-between items-center min-h-[56px] sm:min-h-[60px]">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             {onMenuClick && (
               <button
+                type="button"
                 onClick={onMenuClick}
-                className="lg:hidden p-2 -ml-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
+                className="lg:hidden flex items-center justify-center min-w-[44px] min-h-[44px] -ml-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
                 title="Menu"
                 aria-label="Menu"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
             )}
-            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-              <div className="text-lg sm:text-xl md:text-2xl font-bold text-primary truncate">
-                Umar Academy
-              </div>
-            </div>
+            <h1 className="heading-page truncate text-gray-900">Umar Academy</h1>
           </div>
-          <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
-            {/* Refresh Button */}
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <button
+              type="button"
               onClick={async () => {
                 setIsRefreshing(true);
                 try {
-                  await refreshDataLight(); // Use lightweight refresh for faster updates
+                  await refreshDataLight();
                 } finally {
                   setTimeout(() => setIsRefreshing(false), 500);
                 }
               }}
               disabled={loading || isRefreshing}
-              className="relative p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center min-w-[44px] min-h-[44px] text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
               title="Refresh Data"
               aria-label="Refresh Data"
             >
-              <svg
-                className={`w-5 h-5 sm:w-6 sm:h-6 ${isRefreshing ? 'animate-spin' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
+              <svg className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            
-            {/* Notification Bell */}
             {showNotificationBell && onNotificationClick && (
               <button
+                type="button"
                 onClick={onNotificationClick}
-                className="relative p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
+                className="relative flex items-center justify-center min-w-[44px] min-h-[44px] text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
                 title="Notifications"
                 aria-label="Notifications"
               >
-                <svg
-                  className="w-5 h-5 sm:w-6 sm:h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                  />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
                 {unreadCount > 0 && (
-                  <div className="absolute top-0 right-0 flex items-center gap-0.5">
-                    {highPriorityCount > 0 && (
-                      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-600 rounded-full border-2 border-white">
-                        {highPriorityCount > 99 ? '99+' : highPriorityCount}
-                      </span>
-                    )}
-                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-error rounded-full">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  </div>
+                  <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-semibold text-white bg-primary rounded-full">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
                 )}
               </button>
             )}
-            <div className="hidden xs:flex items-center space-x-2 sm:space-x-3 pl-2 sm:pl-4 border-l border-gray-200">
+            <div className="hidden xs:flex items-center gap-2 pl-2 sm:pl-3 border-l border-gray-200">
               {user?.avatar && (
                 <img
                   src={user.avatar}
-                  alt={user.name}
-                  className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 flex-shrink-0 ${
-                    user.role === 'superadmin' ? 'border-error' : 'border-gray-200'
-                  }`}
+                  alt={user.name ?? ''}
+                  className={`h-8 w-8 sm:h-9 sm:w-9 rounded-full flex-shrink-0 object-cover ${user.role === 'superadmin' ? 'ring-2 ring-error' : 'ring-1 ring-gray-200'}`}
                 />
               )}
-              <div className="hidden sm:block">
-                <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate max-w-[120px]">{user?.name}</p>
-                <div className="flex items-center space-x-2">
-                  {user?.role === 'superadmin' ? (
-                    <span className="text-[10px] sm:text-xs font-bold text-white bg-error px-1.5 sm:px-2 py-0.5 rounded">
-                      SUPER ADMIN
-                    </span>
-                  ) : (
-                    <p className="text-[10px] sm:text-xs text-gray-500 capitalize truncate">{user?.role}</p>
-                  )}
-                </div>
+              <div className="hidden sm:block min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
+                <p className="text-xs text-gray-500 capitalize truncate">{user?.role}</p>
               </div>
             </div>
             <button
+              type="button"
               onClick={logout}
-              className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md touch-manipulation whitespace-nowrap"
+              className="min-h-[44px] px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors touch-manipulation whitespace-nowrap"
             >
               <span className="hidden sm:inline">Logout</span>
               <span className="sm:hidden">Out</span>

@@ -7,6 +7,21 @@ const getApiBase = () => {
 
 const API_BASE = getApiBase();
 
+/** Parse API response to QaidahMarkData (shared by fetchQaidahMarks and saveQaidahMarks). */
+function parseQaidahMarkDataResponse(
+  data: { student?: string; book?: string; page?: number; marks?: QaidahMark[] },
+  studentId: string,
+  book: 'qaidah1' | 'qaidah2' | 'quran',
+  page: number
+): QaidahMarkData {
+  return {
+    student: data.student || studentId,
+    book: data.book || book,
+    page: data.page ?? page,
+    marks: data.marks || [],
+  };
+}
+
 // Get authentication token from localStorage
 const getAuthToken = (): string | null => {
   return localStorage.getItem('umar_academy_token');
@@ -63,21 +78,10 @@ export async function fetchQaidahMarks(
     }
 
     const data = await response.json();
-    return {
-      student: data.student || studentId,
-      book: data.book || book,
-      page: data.page || page,
-      marks: data.marks || []
-    };
+    return parseQaidahMarkDataResponse(data, studentId, book, page);
   } catch (error) {
     console.error(`Error fetching qaidah marks for page ${page}:`, error);
-    // Return empty marks on error
-    return {
-      student: studentId,
-      book,
-      page,
-      marks: []
-    };
+    return { student: studentId, book, page, marks: [] };
   }
 }
 
@@ -116,12 +120,7 @@ export async function saveQaidahMarks(
     }
 
     const data = await response.json();
-    return {
-      student: data.student || studentId,
-      book: data.book || book,
-      page: data.page || page,
-      marks: data.marks || []
-    };
+    return parseQaidahMarkDataResponse(data, studentId, book, page);
   } catch (error) {
     console.error(`Error saving qaidah marks for page ${page}:`, error);
     throw error;

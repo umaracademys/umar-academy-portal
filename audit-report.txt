@@ -1,0 +1,98 @@
+
+--- A. Teacher → User Mapping ---
+Teachers with missing or null userId: 0
+Teachers whose email does not exist in users.email: 2
+  1. umar.farooq@umaracademy.com (Umar Farooq) _id=68f964c11efadca0902593d3
+  2. aisha.ahmed@umaracademy.com (Aisha Ahmed) _id=68f964c11efadca0902593d6
+
+--- B. User → Teacher Mapping ---
+Users with role "teacher" but no teacher doc (teachers.userId): 2
+  1. teacher@umaracademy.com (Ustadh Muhammad) _id=695fe19fd2114f41702bae9d
+  2. umair@gmail.com (Umair) _id=6961a6e481c3c2bea94e1a42
+
+--- C. Duplicate Emails ---
+Duplicate emails in users: 0
+Duplicate emails in teachers: 0
+Duplicate emails in admins: 0
+
+--- D. Orphaned Users (role teacher/admin but no corresponding doc) ---
+Users with role "teacher" and no teacher doc: 2
+  1. teacher@umaracademy.com (Ustadh Muhammad) _id=695fe19fd2114f41702bae9d
+  2. umair@gmail.com (Umair) _id=6961a6e481c3c2bea94e1a42
+Users with role "admin" or "superadmin" and no admin doc: 5
+  1. sadmin@umaracademy.org (Super Admin) role=superadmin _id=68f964c11efadca0902593cf
+  2. test@umaracademy.com (Test User) role=admin _id=68f966541cc99984eac0c164
+  3. developer@test.com (Developer Account) role=superadmin _id=69383b71ce3105a0194aea63
+  4. admin@umaracademy.com (Admin User) role=admin _id=69645fc3aa792688cc9ca451
+  5. umairrasheed969@gmail.com (Umair Rasheed) role=admin _id=6964618344a07db659451943
+
+--- E. Teacher permission object validation ---
+Teachers with missing or incomplete permission keys (expected 52 keys): 3
+  1. umar.farooq@umaracademy.com (Umar Farooq) missing 52 keys: canViewAssessments, canEditAssessments, canViewEvaluations, canEditEvaluations, canViewFinancials...
+  2. aisha.ahmed@umaracademy.com (Aisha Ahmed) missing 52 keys: canViewAssessments, canEditAssessments, canViewEvaluations, canEditEvaluations, canViewFinancials...
+  3. teacher@umaracademy.com (Ustadh Muhammad) missing 52 keys: canViewAssessments, canEditAssessments, canViewEvaluations, canEditEvaluations, canViewFinancials...
+
+============================================================
+AUDIT SUMMARY
+============================================================
+Collections: users=70, teachers=11, admins=2
+
+Missing userId (teachers):              0
+Teacher email not in users:             2
+Users role=teacher, no teacher doc:    2
+Duplicate emails (users):              0
+Duplicate emails (teachers):           0
+Duplicate emails (admins):             0
+Orphaned users (teacher):              2
+Orphaned users (admin/superadmin):     5
+Teachers with incomplete permissions:  3
+
+============================================================
+QUERIES (MongoDB shell or Node.js)
+============================================================
+// --- A. Teachers with missing userId ---
+db.teachers.find({ $or: [ { userId: null }, { userId: { $exists: false } } ] });
+
+// --- B. Teachers whose email not in users ---
+// (Run in Node after loading users: const userEmails = new Set(users.map(u => (u.email || '').toLowerCase())); )
+db.teachers.find({});  // then filter in code: t => !userEmails.has((t.email || '').toLowerCase())
+
+// --- C. Users with role teacher but no teacher doc ---
+// (Run in Node: get all teacher userIds from teachers, then find users where role==='teacher' and _id not in that set)
+db.users.find({ role: 'teacher' });
+
+// --- D. Duplicate emails in users ---
+db.users.aggregate([
+  { $match: { email: { $exists: true, $ne: '' } } },
+  { $group: { _id: { $toLower: '$email' }, count: { $sum: 1 }, ids: { $push: '$_id' } } },
+  { $match: { count: { $gt: 1 } } }
+]);
+
+// --- E. Duplicate emails in teachers ---
+db.teachers.aggregate([
+  { $match: { email: { $exists: true, $ne: '' } } },
+  { $group: { _id: { $toLower: '$email' }, count: { $sum: 1 }, ids: { $push: '$_id' } } },
+  { $match: { count: { $gt: 1 } } }
+]);
+
+// --- F. Duplicate emails in admins ---
+db.admins.aggregate([
+  { $match: { email: { $exists: true, $ne: '' } } },
+  { $group: { _id: { $toLower: '$email' }, count: { $sum: 1 }, ids: { $push: '$_id' } } },
+  { $match: { count: { $gt: 1 } } }
+]);
+
+// --- G. Orphaned users (teacher) ---
+// In Node: users with role 'teacher' whose _id is not in teachers.userId
+// db.users.find({ role: 'teacher' }); then filter by teachers.userId set
+
+// --- H. Orphaned users (admin/superadmin) ---
+db.users.find({ role: { $in: ['admin', 'superadmin'] } });
+// then filter by admins.userId set in code
+
+// --- I. Teachers with incomplete permissions (expected 52 keys) ---
+// In Node: for each teacher, check Object.keys(teacher.permissions || {}).length < 52
+db.teachers.find({}).forEach(function(t) {
+  var keys = Object.keys(t.permissions || {});
+  if (keys.length < 52) print(t.email + ' keys=' + keys.length);
+});

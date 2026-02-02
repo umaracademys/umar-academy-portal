@@ -12,7 +12,10 @@ import AdminSabqReview from '../components/AdminSabqReview';
 import { Ticket } from '../types/ticket';
 import { HomeworkItem } from '../types/assignment';
 import Header from '../components/Header';
-import Button from '../components/Button';
+import Sidebar from '../components/Sidebar';
+import AppLayout from '../components/layout/AppLayout';
+import Button from '../components/ui/Button';
+import EmptyState from '../components/ui/EmptyState';
 
 // Helper function to normalize IDs (same as in BackendDataContext)
 const normalizeId = (id: any): string => {
@@ -66,7 +69,8 @@ const AssignmentManagement: React.FC = () => {
   const [homeworkAssignmentId, setHomeworkAssignmentId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'with-assignments' | 'without-assignments'>('all');
   const [sabqReviewTicket, setSabqReviewTicket] = useState<Ticket | null>(null);
-  
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   // Error and loading states
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -974,242 +978,171 @@ const AssignmentManagement: React.FC = () => {
     setSelectedStudent(null);
   };
 
+  const displayError = error || operationError;
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Error Messages */}
-        {(error || operationError) && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3 flex-1">
-                <h3 className="text-sm font-medium text-red-800">
-                  {error ? 'System Error' : 'Operation Error'}
-                </h3>
-                <p className="mt-1 text-sm text-red-700">
-                  {error || operationError}
-                </p>
-                <div className="mt-2">
-                  <button
-                    onClick={() => {
-                      setError(null);
-                      setOperationError(null);
-                      if (refreshData && typeof refreshData === 'function') {
-                        refreshData().catch(err => console.error('Refresh error:', err));
-                      }
-                    }}
-                    className="text-sm font-medium text-red-800 hover:text-red-900 underline"
-                  >
-                    Dismiss and Refresh
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+    <div className="min-h-screen bg-background">
+      <Header onMenuClick={() => setSidebarOpen((o) => !o)} />
+      <AppLayout
+        sidebar={
+          <Sidebar
+            activeSection="assignments"
+            onSectionChange={() => {}}
+            isMobileOpen={sidebarOpen}
+            onMobileToggle={() => setSidebarOpen((o) => !o)}
+            onMobileClose={() => setSidebarOpen(false)}
+          />
+        }
+        sidebarOpen={sidebarOpen}
+        onOverlayClick={() => setSidebarOpen(false)}
+        maxWidth="7xl"
+      >
+        <div className="space-y-4 sm:space-y-6">
+          {displayError && (
+            <EmptyState
+              title={error ? 'System Error' : 'Operation Error'}
+              message={displayError}
+              action={
+                <Button
+                  variant="primary"
+                  size="md"
+                  fullWidthMobile
+                  onClick={() => {
+                    setError(null);
+                    setOperationError(null);
+                    if (refreshData) refreshData().catch((err: unknown) => console.error('Refresh error:', err));
+                  }}
+                >
+                  Dismiss and Refresh
+                </Button>
+              }
+            />
+          )}
 
-        {/* Loading Indicator */}
-        {(isLoading || loading) && (
-          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center">
-              <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span className="text-sm text-blue-800">
-                {isLoading ? 'Processing...' : 'Loading data...'}
-              </span>
+          {(isLoading || loading) && !displayError && (
+            <div className="flex flex-col items-center justify-center py-8" role="status">
+              <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-3" />
+              <p className="body-text text-gray-600">{isLoading ? 'Processing...' : 'Loading...'}</p>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Page Header */}
-        <div className="mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Assignment Management</h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {currentTeacher 
-                  ? `Manage assignments for ${stats.totalStudents} assigned students`
-                  : `Manage assignments for ${stats.totalStudents} students`}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('students')}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  viewMode === 'students'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Students
-              </button>
-              <button
-                onClick={() => setViewMode('completed')}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors relative ${
-                  viewMode === 'completed'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Completed
-                {stats.completedAssignments > 0 && (
-                  <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs">
-                    {stats.completedAssignments}
-                  </span>
-                )}
-                {stats.pendingHomework > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white rounded-full text-xs flex items-center justify-center">
-                    {stats.pendingHomework}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setViewMode('all-assignments')}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  viewMode === 'all-assignments'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                All Assignments
-                {stats.totalAssignments > 0 && (
-                  <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs">
-                    {stats.totalAssignments}
-                  </span>
-                )}
-              </button>
-            </div>
+          {!displayError && (
+            <>
+        <section className="space-y-4">
+          <div>
+            <h1 className="heading-page text-gray-900">Assignments</h1>
+            <p className="caption mt-1">
+              {currentTeacher
+                ? `${stats.totalStudents} students · ${stats.totalAssignments} assignments · ${stats.completedAssignments} completed`
+                : `${stats.totalStudents} students · ${stats.totalAssignments} assignments`}
+              {stats.pendingHomework > 0 && ` · ${stats.pendingHomework} homework to grade`}
+            </p>
           </div>
-        </div>
-
-        {/* Stats Grid */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-4 sm:p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-blue-700 font-medium mb-1">Total Assignments</p>
-                <p className="text-2xl sm:text-3xl font-bold text-blue-900">{stats.totalAssignments}</p>
-                <p className="text-xs text-blue-600 mt-1">{stats.studentsWithAssignments} students</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200 p-4 sm:p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-green-700 font-medium mb-1">Active</p>
-                <p className="text-2xl sm:text-3xl font-bold text-green-900">{stats.activeAssignments}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 p-4 sm:p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-purple-700 font-medium mb-1">Completed</p>
-                <p className="text-2xl sm:text-3xl font-bold text-purple-900">{stats.completedAssignments}</p>
-                <p className="text-xs text-purple-600 mt-1">{stats.completionRate}% rate</p>
-              </div>
-              <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200 p-4 sm:p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-orange-700 font-medium mb-1">Students</p>
-                <p className="text-2xl sm:text-3xl font-bold text-orange-900">{stats.totalStudents}</p>
-                {stats.pendingHomework > 0 && (
-                  <p className="text-xs text-orange-600 mt-1 font-medium">{stats.pendingHomework} pending homework</p>
-                )}
-              </div>
-              <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <Button
+              variant={viewMode === 'students' ? 'primary' : 'outline'}
+              size="md"
+              onClick={() => setViewMode('students')}
+              fullWidthMobile
+              className="min-h-[44px]"
+            >
+              By student
+            </Button>
+            <Button
+              variant={viewMode === 'completed' ? 'primary' : 'outline'}
+              size="md"
+              onClick={() => setViewMode('completed')}
+              fullWidthMobile
+              className="min-h-[44px]"
+            >
+              Completed
+              {stats.completedAssignments > 0 && (
+                <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-white/20">
+                  {stats.completedAssignments}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant={viewMode === 'all-assignments' ? 'primary' : 'outline'}
+              size="md"
+              onClick={() => setViewMode('all-assignments')}
+              fullWidthMobile
+              className="min-h-[44px]"
+            >
+              All assignments
+              {stats.totalAssignments > 0 && (
+                <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-white/20">
+                  {stats.totalAssignments}
+                </span>
+              )}
+            </Button>
           </div>
         </section>
 
-        {/* Compact Filters */}
-        <div className="bg-white rounded-lg border border-gray-200 p-3 mb-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex-1">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+          <h2 className="heading-card mb-3">Search and filters</h2>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 min-w-0">
+              <label className="block body-text font-medium text-gray-700 mb-1 sr-only">Search students</label>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search students..."
-                className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+                placeholder="Search by name or email..."
+                className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-1 focus:ring-primary focus:border-primary"
               />
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <select
-                value={selectedProgram}
-                onChange={(e) => setSelectedProgram(e.target.value as ProgramType | 'all')}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white focus:ring-1 focus:ring-primary focus:border-primary"
-              >
-                <option value="all">All Programs</option>
-                <option value="Full-Time HQ">Full-Time HQ</option>
-                <option value="Part-Time HQ">Part-Time HQ</option>
-                <option value="After School">After School</option>
-              </select>
-              {viewMode === 'students' && (
+            <div className="flex flex-wrap gap-2 items-end">
+              <div>
+                <label className="block body-text font-medium text-gray-700 mb-1 sr-only">Program</label>
                 <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as 'all' | 'with-assignments' | 'without-assignments')}
-                  className="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white focus:ring-1 focus:ring-primary focus:border-primary"
+                  value={selectedProgram}
+                  onChange={(e) => setSelectedProgram(e.target.value as ProgramType | 'all')}
+                  className="min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text bg-white focus:ring-1 focus:ring-primary focus:border-primary"
                 >
-                  <option value="all">All</option>
-                  <option value="with-assignments">With Assignments</option>
-                  <option value="without-assignments">Without Assignments</option>
+                  <option value="all">All programs</option>
+                  <option value="Full-Time HQ">Full-Time HQ</option>
+                  <option value="Part-Time HQ">Part-Time HQ</option>
+                  <option value="After School">After School</option>
                 </select>
+              </div>
+              {viewMode === 'students' && (
+                <div>
+                  <label className="block body-text font-medium text-gray-700 mb-1 sr-only">Assignment status</label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value as 'all' | 'with-assignments' | 'without-assignments')}
+                    className="min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text bg-white focus:ring-1 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="all">All</option>
+                    <option value="with-assignments">With assignments</option>
+                    <option value="without-assignments">Without assignments</option>
+                  </select>
+                </div>
               )}
               {(searchQuery || selectedProgram !== 'all' || filterStatus !== 'all') && (
-                <button
+                <Button
+                  variant="outline"
+                  size="md"
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedProgram('all');
                     setFilterStatus('all');
                   }}
-                  className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                  className="min-h-[44px]"
                 >
                   Clear
-                </button>
+                </Button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Students List, Completed Assignments, or All Assignments */}
         {viewMode === 'all-assignments' ? (
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                📝 All Assignments ({stats.totalAssignments})
+            <div className="px-4 py-3 border-b border-gray-100">
+              <h2 className="heading-section">
+                All assignments ({stats.totalAssignments})
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 Showing all {stats.totalAssignments} assignments across all students
@@ -1584,7 +1517,6 @@ const AssignmentManagement: React.FC = () => {
             )}
           </div>
         )}
-      </div>
 
       {/* Modals */}
       {/* After School Student View */}
@@ -1785,6 +1717,10 @@ const AssignmentManagement: React.FC = () => {
           onClose={handleCloseHomeworkForm}
         />
       )}
+            </>
+          )}
+        </div>
+      </AppLayout>
     </div>
   );
 };

@@ -4,6 +4,8 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import { useToast } from '../hooks/useToast';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import AppLayout from '../components/layout/AppLayout';
+import Button from '../components/ui/Button';
 import { Teacher, TeacherAttendance } from '../types';
 
 const TeacherAttendanceManagement: React.FC = () => {
@@ -19,7 +21,8 @@ const TeacherAttendanceManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterShift, setFilterShift] = useState<string>('all'); // 'all', 'morning', 'evening'
+  const [filterShift, setFilterShift] = useState<string>('all');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
@@ -220,176 +223,177 @@ const TeacherAttendanceManagement: React.FC = () => {
   if (user?.role !== 'admin' && user?.role !== 'superadmin') {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-6">
-            <div className="max-w-4xl mx-auto">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800">Access denied. Admin privileges required.</p>
-              </div>
-            </div>
-          </main>
-        </div>
+        <Header onMenuClick={() => setSidebarOpen((o) => !o)} />
+        <AppLayout
+          sidebar={
+            <Sidebar
+              activeSection="teacher-attendance"
+              onSectionChange={() => {}}
+              isMobileOpen={sidebarOpen}
+              onMobileToggle={() => setSidebarOpen((o) => !o)}
+              onMobileClose={() => setSidebarOpen(false)}
+            />
+          }
+          sidebarOpen={sidebarOpen}
+          onOverlayClick={() => setSidebarOpen(false)}
+          maxWidth="7xl"
+        >
+          <div className="p-4">
+            <p className="body-text font-medium text-red-600">Access denied. Admin access only.</p>
+          </div>
+        </AppLayout>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Teacher Attendance Management</h1>
-              <p className="text-gray-600">Manage and track teacher attendance records</p>
+      <Header onMenuClick={() => setSidebarOpen((o) => !o)} />
+      <AppLayout
+        sidebar={
+          <Sidebar
+            activeSection="teacher-attendance"
+            onSectionChange={() => {}}
+            isMobileOpen={sidebarOpen}
+            onMobileToggle={() => setSidebarOpen((o) => !o)}
+            onMobileClose={() => setSidebarOpen(false)}
+          />
+        }
+        sidebarOpen={sidebarOpen}
+        onOverlayClick={() => setSidebarOpen(false)}
+        maxWidth="7xl"
+      >
+      <section className="space-y-4">
+        <div>
+          <h1 className="heading-page text-gray-900">Teacher attendance</h1>
+          <p className="caption mt-1">View and share attendance records with teachers</p>
+        </div>
+
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+          <h2 className="heading-card mb-3">Date and filters</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block body-text font-medium text-gray-700 mb-1">Teacher</label>
+              <select
+                value={selectedTeacherId}
+                onChange={(e) => setSelectedTeacherId(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text bg-white focus:ring-1 focus:ring-primary focus:border-primary"
+              >
+                <option value="all">All teachers</option>
+                {teachers.map(teacher => {
+                  const tid = (teacher as any)._id?.toString() || (teacher as any).teacherDocumentId || teacher.id;
+                  return (
+                    <option key={tid} value={tid}>
+                      {teacher.fullName}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
-
-            {/* Filters */}
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Teacher</label>
-                  <select
-                    value={selectedTeacherId}
-                    onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Teachers</option>
-                    {teachers.map(teacher => {
-                      const tid = (teacher as any)._id?.toString() || (teacher as any).teacherDocumentId || teacher.id;
-                      return (
-                        <option key={tid} value={tid}>
-                          {teacher.fullName}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date (Range)</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date (Range)</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status Filter</label>
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="present">Present</option>
-                    <option value="absent">Absent</option>
-                    <option value="late">Late</option>
-                    <option value="not_applicable">Not Applicable</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Shift Filter</label>
-                  <select
-                    value={filterShift}
-                    onChange={(e) => setFilterShift(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Shifts</option>
-                    <option value="morning">Morning</option>
-                    <option value="evening">Evening</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={fetchAttendance}
-                  disabled={isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isLoading ? 'Loading...' : 'Refresh'}
-                </button>
-                {selectedRecords.size > 0 && (
-                  <>
-                    <button
-                      onClick={() => bulkShare(true)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                    >
-                      Share Selected ({selectedRecords.size})
-                    </button>
-                    <button
-                      onClick={() => bulkShare(false)}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-                    >
-                      Unshare Selected ({selectedRecords.size})
-                    </button>
-                    <button
-                      onClick={clearSelection}
-                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-                    >
-                      Clear Selection
-                    </button>
-                  </>
-                )}
-              </div>
+            <div>
+              <label className="block body-text font-medium text-gray-700 mb-1">Date</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-1 focus:ring-primary focus:border-primary"
+              />
             </div>
+            <div>
+              <label className="block body-text font-medium text-gray-700 mb-1">From (range)</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-1 focus:ring-primary focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block body-text font-medium text-gray-700 mb-1">To (range)</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-1 focus:ring-primary focus:border-primary"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block body-text font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text bg-white focus:ring-1 focus:ring-primary focus:border-primary"
+              >
+                <option value="all">All</option>
+                <option value="present">Present</option>
+                <option value="absent">Absent</option>
+                <option value="late">Late</option>
+                <option value="not_applicable">Not applicable</option>
+              </select>
+            </div>
+            <div>
+              <label className="block body-text font-medium text-gray-700 mb-1">Shift</label>
+              <select
+                value={filterShift}
+                onChange={(e) => setFilterShift(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text bg-white focus:ring-1 focus:ring-primary focus:border-primary"
+              >
+                <option value="all">All</option>
+                <option value="morning">Morning</option>
+                <option value="evening">Evening</option>
+              </select>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={fetchAttendance}
+              disabled={isLoading}
+              fullWidthMobile
+              className="min-h-[44px]"
+            >
+              {isLoading ? 'Loading...' : 'Refresh'}
+            </Button>
+            {selectedRecords.size > 0 && (
+              <>
+                <Button variant="outline" size="md" onClick={() => bulkShare(true)} className="min-h-[44px]">
+                  Share selected ({selectedRecords.size})
+                </Button>
+                <Button variant="outline" size="md" onClick={() => bulkShare(false)} className="min-h-[44px]">
+                  Unshare selected
+                </Button>
+                <Button variant="outline" size="md" onClick={clearSelection} className="min-h-[44px]">
+                  Clear selection
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
 
-            {/* Attendance Records Table */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Attendance Records ({filteredRecords.length})
-                </h2>
-                {filteredRecords.length > 0 && (
-                  <button
-                    onClick={selectAll}
-                    className="text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    Select All
-                  </button>
-                )}
-              </div>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+            <h2 className="heading-section">Records ({filteredRecords.length})</h2>
+            {filteredRecords.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={selectAll}>
+                Select all
+              </Button>
+            )}
+          </div>
 
-              {isLoading ? (
-                <div className="p-8 text-center">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <p className="mt-2 text-gray-600">Loading attendance records...</p>
-                </div>
-              ) : filteredRecords.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  No attendance records found
-                </div>
-              ) : (
+          {isLoading ? (
+            <div className="p-8 text-center">
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+              <p className="body-text text-gray-600 mt-3">Loading...</p>
+            </div>
+          ) : filteredRecords.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="body-text text-gray-900">No records found</p>
+              <p className="caption mt-1">Try a different date or teacher</p>
+            </div>
+          ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -402,7 +406,8 @@ const TeacherAttendanceManagement: React.FC = () => {
                               if (e.target.checked) selectAll();
                               else clearSelection();
                             }}
-                            className="rounded border-gray-300"
+                            className="rounded border-gray-300 w-4 h-4 min-w-[20px] min-h-[20px]"
+                            aria-label="Select all"
                           />
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -438,7 +443,8 @@ const TeacherAttendanceManagement: React.FC = () => {
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => toggleRecordSelection(recordId)}
-                                className="rounded border-gray-300"
+                                className="rounded border-gray-300 w-4 h-4 min-w-[20px] min-h-[20px]"
+                                aria-label={`Select record ${record.teacherName} ${record.date}`}
                               />
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
@@ -496,16 +502,13 @@ const TeacherAttendanceManagement: React.FC = () => {
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm">
-                              <button
+                              <Button
+                                variant={record.sharedWithTeacher ? 'outline' : 'primary'}
+                                size="sm"
                                 onClick={() => toggleShare(recordId, record.sharedWithTeacher || false)}
-                                className={`px-3 py-1 rounded-md text-xs font-medium ${
-                                  record.sharedWithTeacher
-                                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                }`}
                               >
                                 {record.sharedWithTeacher ? 'Unshare' : 'Share'}
-                              </button>
+                              </Button>
                             </td>
                           </tr>
                         );
@@ -514,10 +517,9 @@ const TeacherAttendanceManagement: React.FC = () => {
                   </table>
                 </div>
               )}
-            </div>
-          </div>
-        </main>
-      </div>
+        </div>
+      </section>
+      </AppLayout>
     </div>
   );
 };

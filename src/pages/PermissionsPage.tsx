@@ -1,178 +1,159 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import AppLayout from '../components/layout/AppLayout';
+import Button from '../components/ui/Button';
+import EmptyState from '../components/ui/EmptyState';
+import PermissionModulePanel from '../components/PermissionModulePanel';
 import { useAuth } from '../contexts/AuthContext';
-import { useData } from '../contexts/DataContext';
-import { useBackendData } from '../contexts/BackendDataContext';
-import { useToast } from '../hooks/useToast';
-
-// Lazy load PermissionManager for better performance
-const PermissionManager = lazy(() => import('../components/PermissionManager'));
+import { usePermissions } from '../hooks/usePermissions';
+import type { RoleId } from '../hooks/usePermissions';
 
 const PermissionsPage: React.FC = () => {
   const { user } = useAuth();
-  const { teachers, admins, refreshData } = useData();
-  const { refreshDataLight } = useBackendData();
-  const { showToast } = useToast();
-  const [activeSection, setActiveSection] = useState('permissions');
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const {
+    values,
+    loading,
+    error,
+    unsavedChanges,
+    modules,
+    setPermission,
+    setAllForAction,
+    apply,
+    reset,
+    refresh,
+    changedKeys,
+  } = usePermissions();
 
-  // Ensure user is superadmin
   useEffect(() => {
-    if (user && user.role !== 'superadmin') {
-      showToast('Access denied. Super admin only.', 'error');
-      // Redirect to dashboard
-      window.location.href = '/dashboard';
-    }
-  }, [user, showToast]);
-
-  // Refresh data on mount to ensure latest permissions
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsRefreshing(true);
-        await refreshData();
-        await refreshDataLight();
-      } catch (error) {
-        console.error('Error loading data:', error);
-        showToast('Failed to load data. Please refresh the page.', 'error');
-      } finally {
-        setIsRefreshing(false);
-      }
-    };
-
     if (user?.role === 'superadmin') {
-      loadData();
+      refresh();
     }
-  }, [user, refreshData, refreshDataLight, showToast]);
-
-  // Handle permission update success
-  const handlePermissionUpdate = () => {
-    // Refresh data after permission update
-    refreshData().catch((error) => {
-      console.error('Error refreshing data after permission update:', error);
-      showToast('Permissions updated, but failed to refresh data.', 'warning');
-    });
-  };
+  }, [user?.role, refresh]);
 
   if (!user || user.role !== 'superadmin') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600">This page is only accessible to super administrators.</p>
+        <div className="text-center px-4">
+          <h1 className="heading-page mb-2">Access denied</h1>
+          <p className="body-text text-gray-600">This page is only for super administrators.</p>
         </div>
       </div>
     );
   }
 
+  const handleApply = async () => {
+    const ok = await apply();
+    if (ok) {
+      await refresh();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex">
-        <Sidebar
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-          isMobileOpen={isMobileOpen}
-          onMobileToggle={() => setIsMobileOpen(!isMobileOpen)}
-        />
-        
-        <main className="flex-1 lg:ml-0">
-          <div className="p-4 md:p-6 lg:p-8">
-            {/* Page Header */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                    Permission Management
-                  </h1>
-                  <p className="text-gray-600 mt-1">
-                    Control access and permissions for teachers and admins
-                  </p>
-                </div>
-                <button
-                  onClick={async () => {
-                    setIsRefreshing(true);
-                    try {
-                      await refreshData();
-                      await refreshDataLight();
-                      showToast('Data refreshed successfully', 'success');
-                    } catch (error) {
-                      console.error('Error refreshing:', error);
-                      showToast('Failed to refresh data', 'error');
-                    } finally {
-                      setIsRefreshing(false);
-                    }
-                  }}
-                  disabled={isRefreshing}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isRefreshing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Refreshing...
-                    </>
-                  ) : (
-                    <>
-                      <span>🔄</span>
-                      Refresh
-                    </>
-                  )}
-                </button>
-              </div>
-              
-              {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Total Teachers</p>
-                      <p className="text-2xl font-bold text-gray-900">{teachers.length}</p>
-                    </div>
-                    <div className="text-3xl">👨‍🏫</div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Total Admins</p>
-                      <p className="text-2xl font-bold text-gray-900">{admins.length}</p>
-                    </div>
-                    <div className="text-3xl">👨‍💼</div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Total Users</p>
-                      <p className="text-2xl font-bold text-gray-900">{teachers.length + admins.length}</p>
-                    </div>
-                    <div className="text-3xl">👥</div>
-                  </div>
-                </div>
-              </div>
+      <Header onMenuClick={() => setSidebarOpen((o) => !o)} />
+      <AppLayout
+        sidebar={
+          <Sidebar
+            activeSection="permissions"
+            onSectionChange={() => {}}
+            isMobileOpen={sidebarOpen}
+            onMobileToggle={() => setSidebarOpen((o) => !o)}
+            onMobileClose={() => setSidebarOpen(false)}
+          />
+        }
+        sidebarOpen={sidebarOpen}
+        onOverlayClick={() => setSidebarOpen(false)}
+        maxWidth="7xl"
+      >
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h1 className="heading-page">Permissions</h1>
+              <p className="caption mt-1 text-gray-600">
+                Manage who can do what — teachers, admins, students
+              </p>
             </div>
-
-            {/* Permission Manager */}
-            <div className="bg-white rounded-lg shadow border border-gray-200">
-              <Suspense
-                fallback={
-                  <div className="p-8 text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading Permission Manager...</p>
-                  </div>
-                }
-              >
-                <PermissionManager
-                  isFullPage={true}
-                  onUpdate={handlePermissionUpdate}
-                />
-              </Suspense>
-            </div>
+            <Button
+              variant="outline"
+              size="md"
+              onClick={refresh}
+              isLoading={loading}
+              className="min-h-[44px]"
+              fullWidthMobile
+            >
+              Refresh
+            </Button>
           </div>
-        </main>
-      </div>
+
+          {error && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <EmptyState
+                title="Could not load data"
+                message={error}
+                action={
+                  <Button variant="primary" size="md" onClick={refresh} className="min-h-[44px]">
+                    Retry
+                  </Button>
+                }
+              />
+            </div>
+          )}
+
+          {!error && (
+            <>
+              {loading && (
+                <div className="flex flex-col items-center justify-center py-12" role="status">
+                  <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-3" />
+                  <p className="body-text text-gray-600">Loading…</p>
+                </div>
+              )}
+
+              {!loading && (
+                <>
+                  {modules.map((mod) => (
+                    <PermissionModulePanel
+                      key={mod.id}
+                      moduleName={mod.name}
+                      actions={mod.actions}
+                      values={values}
+                      onChange={(role: RoleId, key: string, value: boolean) => setPermission(role, key, value)}
+                      onSelectAllForAction={(role: RoleId, key: string, value: boolean) =>
+                        setAllForAction(role, key, value)
+                      }
+                      changedKeys={changedKeys}
+                    />
+                  ))}
+
+                  <div className="sticky bottom-0 left-0 right-0 bg-gray-50 border-t border-gray-200 p-4 flex flex-col sm:flex-row gap-3 sm:gap-4 z-10">
+                    <Button
+                      variant="outline"
+                      size="md"
+                      onClick={reset}
+                      disabled={!unsavedChanges}
+                      className="min-h-[44px] order-2 sm:order-1"
+                      fullWidthMobile
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="md"
+                      onClick={handleApply}
+                      disabled={!unsavedChanges}
+                      className="min-h-[44px] order-1 sm:order-2"
+                      fullWidthMobile
+                    >
+                      Apply changes
+                    </Button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </AppLayout>
     </div>
   );
 };

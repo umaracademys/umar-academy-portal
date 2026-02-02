@@ -40,9 +40,9 @@ const {
 } = require('../middleware/messagePermissions');
 const rateLimit = require('express-rate-limit');
 
-// Load models
-const Conversation = require('../models/Conversation');
-const Message = require('../models/Message');
+// LEGACY import: required only for historical/manual scripts, not active app logic
+const Conversation = require('../models/legacy/Conversation');
+const Message = require('../models/legacy/Message');
 const User = mongoose.model('User');
 const Teacher = mongoose.model('Teacher');
 const Student = mongoose.model('Student');

@@ -6,6 +6,7 @@ import { NotificationsProvider } from './contexts/NotificationsContext';
 import Login from './pages/Login';
 import DeveloperModeIndicator from './components/DeveloperModeIndicator';
 import MaintenanceBanner from './components/MaintenanceBanner';
+import PermissionProtectedRoute from './components/PermissionProtectedRoute';
 
 // Lazy load heavy components for code-splitting
 const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
@@ -28,10 +29,11 @@ const QaidahPageViewer = lazy(() => import('./pages/qaidah/PageViewer'));
 const TeacherPdfViewer = lazy(() => import('./components/TeacherPdfViewer'));
 const StudentPdfHomework = lazy(() => import('./components/StudentPdfHomework'));
 const TeacherStudentAssignmentManager = lazy(() => import('./components/TeacherStudentAssignmentManager'));
-const PermissionsPage = lazy(() => import('./pages/PermissionsPage'));
+const RolesPermissionsPage = lazy(() => import('./pages/RolesPermissionsPage'));
 const MushafReviewPage = lazy(() => import('./pages/MushafReviewPage'));
 const TeacherAttendanceManagement = lazy(() => import('./pages/TeacherAttendanceManagement'));
 const TeacherAttendanceView = lazy(() => import('./pages/TeacherAttendanceView'));
+const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage'));
 
 // Loading component for Suspense
 const LoadingFallback: React.FC = () => (
@@ -134,6 +136,7 @@ function AppContent() {
           path="/login" 
           element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} 
         />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route
           path="/dashboard"
           element={
@@ -145,89 +148,89 @@ function AppContent() {
         <Route
           path="/profile"
           element={
-            <ProtectedRoute>
+            <PermissionProtectedRoute>
               <TeacherProfile />
-            </ProtectedRoute>
+            </PermissionProtectedRoute>
           }
         />
         <Route
           path="/assignments"
           element={
-            <ProtectedRoute>
+            <PermissionProtectedRoute>
               <AssignmentManagement />
-            </ProtectedRoute>
+            </PermissionProtectedRoute>
           }
         />
         <Route
           path="/students"
           element={
-            <ProtectedRoute>
+            <PermissionProtectedRoute>
               <StudentsPage />
-            </ProtectedRoute>
+            </PermissionProtectedRoute>
           }
         />
         <Route
           path="/teachers"
           element={
-            <ProtectedRoute>
+            <PermissionProtectedRoute>
               <TeachersPage />
-            </ProtectedRoute>
+            </PermissionProtectedRoute>
           }
         />
         <Route
           path="/teacher-student-assignment"
           element={
-            <ProtectedRoute>
+            <PermissionProtectedRoute>
               <TeacherStudentAssignmentManager />
-            </ProtectedRoute>
+            </PermissionProtectedRoute>
           }
         />
         <Route
           path="/permissions"
           element={
-            <ProtectedRoute>
-              <PermissionsPage />
-            </ProtectedRoute>
+            <PermissionProtectedRoute>
+              <RolesPermissionsPage />
+            </PermissionProtectedRoute>
           }
         />
         <Route
           path="/mushaf/review/:ticketId"
           element={
-            <ProtectedRoute>
+            <PermissionProtectedRoute>
               <MushafReviewPage />
-            </ProtectedRoute>
+            </PermissionProtectedRoute>
           }
         />
         <Route
           path="/teacher-attendance"
           element={
-            <ProtectedRoute>
+            <PermissionProtectedRoute>
               <TeacherAttendanceManagement />
-            </ProtectedRoute>
+            </PermissionProtectedRoute>
           }
         />
         <Route
           path="/my-attendance"
           element={
-            <ProtectedRoute>
+            <PermissionProtectedRoute>
               <TeacherAttendanceView />
-            </ProtectedRoute>
+            </PermissionProtectedRoute>
           }
         />
         <Route
           path="/messages"
           element={
-            <ProtectedRoute>
+            <PermissionProtectedRoute>
               <ProfessionalMessagesPage />
-            </ProtectedRoute>
+            </PermissionProtectedRoute>
           }
         />
         <Route
           path="/pdf-teaching"
           element={
-            <ProtectedRoute>
+            <PermissionProtectedRoute>
               <TeacherPdfViewer />
-            </ProtectedRoute>
+            </PermissionProtectedRoute>
           }
         />
         <Route

@@ -1,3 +1,7 @@
+// LEGACY / UNUSED
+// Alternate Permission UI not currently used by PermissionsPage.
+// Do not remove without product decision.
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { Teacher, Admin, TeacherPermissions, AdminPermissions } from '../../types';
 import { useBackendData } from '../../contexts/BackendDataContext';

@@ -1186,9 +1186,9 @@ mongoose.connect(MONGODB_URI, mongooseOptions)
 // Import Quran schemas
 const { QuranPage, QuranWord, QuranChapter } = require('./quranSchemas');
 
-// Import unified messaging models (must be loaded before routes)
-require('./models/Conversation');
-require('./models/Message');
+// LEGACY import: required only for historical/manual scripts, not active app logic
+require('./models/legacy/Conversation');
+require('./models/legacy/Message');
 
 // Import unified notification model (write-optimized, deduplication-enabled)
 const Notification = require('./models/Notification');
@@ -3601,8 +3601,8 @@ const syncTeacherAssignedStudents = async () => {
   }
 };
 
-// Get all teachers
-app.get('/api/teachers', combinedListEndpointLimiter, authenticateToken, async (req, res) => {
+// Get all teachers (admin/superadmin with canManageTeachers only)
+app.get('/api/teachers', combinedListEndpointLimiter, authenticateToken, requirePermission('canManageTeachers'), async (req, res) => {
   try {
     // Sync assignedStudents arrays before returning teachers
     const syncOnLoad = req.query.sync === 'true';

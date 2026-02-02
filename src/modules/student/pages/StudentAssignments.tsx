@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from '../../../components/Header';
-import Card from '../../../components/Card';
+import Sidebar from '../../../components/Sidebar';
+import AppLayout from '../../../components/layout/AppLayout';
+import Button from '../../../components/ui/Button';
 import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -42,6 +43,7 @@ const StudentAssignments: React.FC = () => {
     mistakes?: boolean;
   }>>({});
   const [showHomeworkOnly, setShowHomeworkOnly] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Unified Student Identity: Find student by email OR userId (ID-agnostic lookup)
   const currentStudent = useMemo(() => {
@@ -436,90 +438,81 @@ const StudentAssignments: React.FC = () => {
 
   if (!currentStudent) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-primary mb-4">Student Profile Not Found</h1>
-            <p className="text-primary-soft mb-4">We couldn't find your student profile.</p>
-            <button 
-              onClick={() => navigate('/student/dashboard')} 
-              className="px-6 py-3 bg-primary text-white rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors"
-            >
-              Back to Dashboard
-            </button>
+      <AppLayout
+        sidebar={<Sidebar onClose={() => setSidebarOpen(false)} isOpen={sidebarOpen} />}
+        isSidebarOpen={sidebarOpen}
+        onMenuClick={() => setSidebarOpen(true)}
+        onOverlayClick={() => setSidebarOpen(false)}
+      >
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="text-center">
+              <h1 className="heading-page mb-2">Student Profile Not Found</h1>
+              <p className="body-text text-gray-600 mb-6">We couldn&apos;t find your student profile.</p>
+              <Button onClick={() => navigate('/student/dashboard')} fullWidthMobile>
+                Back to Dashboard
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4 py-2">
-        {/* Header - Compact */}
-        <div className="mb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5">
-          <div>
-            <h1 className="text-lg font-bold text-primary">My Assignments</h1>
+    <AppLayout
+      sidebar={<Sidebar onClose={() => setSidebarOpen(false)} isOpen={sidebarOpen} />}
+      isSidebarOpen={sidebarOpen}
+      onMenuClick={() => setSidebarOpen(true)}
+      onOverlayClick={() => setSidebarOpen(false)}
+    >
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Page title outside cards */}
+          <div className="mb-6">
+            <h1 className="heading-page">My assignments</h1>
+            <p className="caption mt-1">
+              Your current classwork and homework
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
+            <Button
+              variant={showHomeworkOnly ? 'primary' : 'outline'}
               onClick={() => setShowHomeworkOnly(!showHomeworkOnly)}
-              className={`w-full sm:w-auto px-2.5 py-1.5 border rounded text-xs font-semibold transition-colors ${
-                showHomeworkOnly
-                  ? 'bg-primary text-white border-primary hover:bg-primary/90'
-                  : 'border-gray-300 text-primary hover:bg-gray-50'
-              }`}
+              fullWidthMobile
+              size="md"
             >
               {showHomeworkOnly ? 'Show All' : 'Previous Homework Only'}
-            </button>
-            <button
-              onClick={() => navigate('/student/dashboard')}
-              className="w-full sm:w-auto px-2.5 py-1.5 border border-gray-300 text-primary rounded text-xs font-semibold hover:bg-gray-50 transition-colors"
-            >
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/student/dashboard')} fullWidthMobile size="md">
               Back to Dashboard
-            </button>
+            </Button>
           </div>
-        </div>
 
-        {/* Statistics - Compact */}
-        <div className="grid grid-cols-3 gap-2 mb-2">
-          <Card title="Total">
-            <div className="text-xl font-bold text-primary">{studentAssignments.length}</div>
-          </Card>
-          <Card title="Active">
-            <div className="text-xl font-bold text-blue-600">
-              {studentAssignments.filter((a: any) => a.status === 'active').length}
+          {/* Assignments List - single white panel */}
+          {studentAssignments.length === 0 ? (
+            <div className="bg-white rounded-lg border border-gray-200 p-6 sm:p-8">
+              <div className="text-center py-8">
+                <p className="body-text text-gray-700 mb-2">No assignments yet</p>
+                <p className="caption text-gray-600">New assignments from your teacher will appear here</p>
+              </div>
             </div>
-          </Card>
-          <Card title="Done">
-            <div className="text-xl font-bold text-green-600">
-              {studentAssignments.filter((a: any) => a.status === 'completed').length}
-            </div>
-          </Card>
-        </div>
-
-        {/* Assignments List */}
-        {studentAssignments.length === 0 ? (
-          <Card title="No Assignments">
-            <div className="text-center py-12">
-              <p className="text-primary-soft text-lg mb-4">No assignments found.</p>
-              <p className="text-primary-soft">Your teacher will assign work soon.</p>
-            </div>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {(Object.entries(groupedAssignments) as [string, any[]][])
-              .sort(([dateA], [dateB]) => {
-                const a = new Date(dateA);
-                const b = new Date(dateB);
-                return b.getTime() - a.getTime();
-              })
-              .map(([date, dayAssignments]) => (
-                <Card key={date} title={date}>
-                  <div className="space-y-6">
+          ) : (
+            <div className="space-y-6">
+              {(Object.entries(groupedAssignments) as [string, any[]][])
+                .sort(([dateA], [dateB]) => {
+                  const a = new Date(dateA);
+                  const b = new Date(dateB);
+                  return b.getTime() - a.getTime();
+                })
+                .map(([date, dayAssignments]) => (
+                  <div key={date} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="px-4 sm:px-5 py-3 border-b border-gray-200">
+                      <h2 className="heading-card">{date}</h2>
+                    </div>
+                    <div className="p-4 sm:p-5 space-y-6">
                     {dayAssignments.map((assignment: any) => {
                       const isSelected = selectedAssignment === assignment.id;
                       const classwork = assignment.classwork || { sabq: [], sabqi: [], manzil: [] };
@@ -553,15 +546,11 @@ const StudentAssignments: React.FC = () => {
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1.5 mb-1.5">
                             <div className="flex-1">
                               <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                                <h3 className="text-sm font-bold text-primary">
+                                <h3 className="heading-card">
                                   Assignment #{studentAssignments.indexOf(assignment) + 1}
                                 </h3>
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                                  assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                  assignment.status === 'archived' ? 'bg-gray-100 text-gray-800' :
-                                  'bg-blue-100 text-blue-800'
-                                }`}>
-                                  {assignment.status === 'active' ? 'Active' : assignment.status}
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                  {assignment.status === 'active' ? 'Active' : assignment.status === 'completed' ? 'Completed' : assignment.status === 'archived' ? 'Archived' : assignment.status}
                                 </span>
                               </div>
                               <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-600 mb-1">
@@ -573,7 +562,11 @@ const StudentAssignments: React.FC = () => {
                                 <p className="text-[10px] text-gray-600 italic mt-1">"{assignment.comment.substring(0, 60)}..."</p>
                               )}
                             </div>
-                            <button
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              fullWidthMobile
+                              className="min-h-[44px]"
                               onClick={() => {
                                 if (isSelected) {
                                   setSelectedAssignment(null);
@@ -585,10 +578,9 @@ const StudentAssignments: React.FC = () => {
                                   }
                                 }
                               }}
-                              className="w-full sm:w-auto px-2 py-1 bg-soft-primary text-primary rounded text-xs font-semibold hover:bg-primary/10 transition-colors"
                             >
-                              {isSelected ? 'Hide' : 'View'}
-                            </button>
+                              {isSelected ? 'Hide' : 'View assignment'}
+                            </Button>
                           </div>
 
                           {/* Assignment Details (when expanded) - Compact */}
@@ -769,29 +761,25 @@ const StudentAssignments: React.FC = () => {
                                           </span>
                                         </button>
                                         {assignment.homework.submission?.submitted ? (
-                                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                            assignment.homework.submission.status === 'graded' 
-                                              ? 'bg-green-100 text-green-800'
-                                              : assignment.homework.submission.status === 'returned'
-                                              ? 'bg-orange-100 text-orange-800'
-                                              : 'bg-blue-100 text-blue-800'
-                                          }`}>
+                                          <span className="px-3 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
                                             {assignment.homework.submission.status === 'graded' 
-                                              ? '✓ Graded' 
+                                              ? 'Graded' 
                                               : assignment.homework.submission.status === 'returned'
                                               ? 'Returned'
                                               : 'Submitted'}
                                           </span>
                                         ) : (
-                                          <button
+                                          <Button
+                                            variant="primary"
+                                            size="sm"
+                                            fullWidthMobile
                                             onClick={() => {
                                               setShowHomeworkForm(assignment.id);
                                               setHomeworkSubmission({ content: '', link: '', attachments: [] });
                                             }}
-                                            className="px-4 py-2 bg-primary text-white rounded-full text-sm font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors whitespace-nowrap"
                                           >
                                             Submit Homework
-                                          </button>
+                                          </Button>
                                         )}
                                       </div>
                                       
@@ -1002,8 +990,10 @@ const StudentAssignments: React.FC = () => {
                                                 </div>
                                               )}
                                             </div>
-                                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                                              <button
+                                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                                              <Button
+                                                variant="outline"
+                                                fullWidthMobile
                                                 onClick={() => {
                                                   if (isRecording && mediaRecorder) {
                                                     stopRecording();
@@ -1014,17 +1004,18 @@ const StudentAssignments: React.FC = () => {
                                                   setAudioUrl(null);
                                                   setRecordingTime(0);
                                                 }}
-                                                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-accent-soft text-primary rounded-lg sm:rounded-full font-semibold hover:bg-soft-accent transition-colors touch-target min-h-[44px] text-sm sm:text-base"
                                               >
                                                 Cancel
-                                              </button>
-                                              <button
-                                                onClick={() => handleSubmitHomework(assignment.id)}
+                                              </Button>
+                                              <Button
+                                                variant="primary"
+                                                fullWidthMobile
+                                                isLoading={isSubmittingHomework}
                                                 disabled={isSubmittingHomework}
-                                                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-primary text-white rounded-lg sm:rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target min-h-[44px] text-sm sm:text-base"
+                                                onClick={() => handleSubmitHomework(assignment.id)}
                                               >
-                                                {isSubmittingHomework ? 'Submitting...' : 'Submit'}
-                                              </button>
+                                                {isSubmittingHomework ? 'Saving...' : 'Save'}
+                                              </Button>
                                             </div>
                                           </div>
                                         </div>
@@ -1039,10 +1030,10 @@ const StudentAssignments: React.FC = () => {
                                 <div className={`space-y-2 ${hasMushafMistakes ? '' : 'lg:col-span-1'}`}>
                                   <div className="p-1.5 bg-primary/5 rounded border border-primary/20">
                                     <div className="flex items-center justify-between mb-1.5">
-                                      <h4 className="text-xs font-bold text-primary">
-                                        Personal Mushaf
-                                      </h4>
-                                      <button
+                                      <h4 className="heading-card text-sm">Personal Mushaf</h4>
+                                      <Button
+                                        variant="secondary"
+                                        size="sm"
                                         onClick={() => {
                                           if (showMushafForAssignment === assignment.id) {
                                             setShowMushafForAssignment(null);
@@ -1050,10 +1041,9 @@ const StudentAssignments: React.FC = () => {
                                             setShowMushafForAssignment(assignment.id);
                                           }
                                         }}
-                                        className="px-1.5 py-0.5 text-[9px] bg-primary/20 text-primary rounded font-semibold hover:bg-primary/30 transition-colors"
                                       >
                                         {showMushafForAssignment === assignment.id ? 'Hide' : 'Show'}
-                                      </button>
+                                      </Button>
                                     </div>
                                     
                                     {showMushafForAssignment === assignment.id && (
@@ -1160,7 +1150,7 @@ const StudentAssignments: React.FC = () => {
                                         {displayMistakes.map((mistake: any, idx: number) => (
                                           <div
                                             key={mistake.id || idx}
-                                            className="p-1.5 bg-gray-50 rounded border border-gray-200 text-[10px] hover:shadow-sm transition-shadow"
+                                            className="p-3 bg-gray-50 rounded-lg border border-gray-200 body-text text-gray-700"
                                           >
                                             <div className="flex items-start justify-between gap-1.5">
                                               <div className="flex-1">
@@ -1191,13 +1181,14 @@ const StudentAssignments: React.FC = () => {
                         </div>
                       );
                     })}
+                    </div>
                   </div>
-                </Card>
-              ))}
+                ))}
             </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };
 

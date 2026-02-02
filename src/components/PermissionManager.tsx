@@ -1211,12 +1211,16 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose, onUpdate
 
   const sortedTeachers = useMemo(
     () =>
-      [...teachers].sort((a, b) => a.fullName.localeCompare(b.fullName, 'en')),
+      [...teachers].sort((a, b) =>
+        (a.fullName ?? '').localeCompare(b.fullName ?? '', 'en'),
+      ),
     [teachers],
   );
   const sortedAdmins = useMemo(
     () =>
-      [...admins].sort((a, b) => a.fullName.localeCompare(b.fullName, 'en')),
+      [...admins].sort((a, b) =>
+        (a.fullName ?? '').localeCompare(b.fullName ?? '', 'en'),
+      ),
     [admins],
   );
 
@@ -1733,207 +1737,56 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose, onUpdate
     );
 
   return (
-      <div className="space-y-1.5">
-        <section className="rounded border border-gray-200 bg-white p-1.5 shadow-sm">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <img
-                src={teacherAvatar}
-                alt={selectedTeacher.fullName}
-                className="h-8 w-8 rounded-full border border-gray-200 object-cover flex-shrink-0"
-              />
+      <div className="space-y-6">
+        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <img src={teacherAvatar} alt={selectedTeacher.fullName} className="h-14 w-14 rounded-full border-2 border-gray-200 object-cover flex-shrink-0" />
               <div className="min-w-0">
-                <div className="flex items-center gap-1 flex-wrap">
-                  <h3 className="text-xs font-semibold text-gray-900">
-                    {selectedTeacher.fullName}
-                  </h3>
-                  <span
-                    className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
-                      selectedTeacher.status === 'active'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    {selectedTeacher.status === 'active'
-                      ? 'Active'
-                      : 'Inactive'}
-                  </span>
+                <h3 className="text-lg font-semibold text-gray-900">{selectedTeacher.fullName}</h3>
+                <p className="text-sm text-gray-500 mt-0.5">{selectedTeacher.email}</p>
+                <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-600">
+                  <span>{teacherSummary.activeCount} of {totalPermissions} permissions</span>
+                  {teacherSummary.highImpactCount > 0 && <span className="text-error-600">{teacherSummary.highImpactCount} high-impact</span>}
                 </div>
-                <p className="text-[9px] text-gray-600 truncate">
-                  {selectedTeacher.department} • {selectedTeacher.email}
-                </p>
-                <p className="text-[9px] text-gray-500">
-                  Students: {selectedTeacher.assignedStudents.length}
-                </p>
-              </div>
-        </div>
-            <div className="flex flex-wrap gap-1">
-              <button
-                type="button"
-                onClick={() => handleTeacherPreset('all')}
-                disabled={isSaving}
-                className="inline-flex items-center gap-0.5 rounded border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[9px] font-semibold text-purple-700 transition hover:bg-purple-100 disabled:opacity-50"
-              >
-                Full access
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTeacherPreset('view')}
-                disabled={isSaving}
-                className="inline-flex items-center gap-0.5 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
-              >
-                View-only
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTeacherPreset('none')}
-                disabled={isSaving}
-                className="inline-flex items-center gap-0.5 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[9px] font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
-              >
-                Revoke all
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-1.5 grid gap-1 grid-cols-3">
-            <div className="rounded border border-gray-200 bg-gray-50 p-1">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">
-                Active
-              </p>
-              <p className="mt-0.5 text-xs font-semibold text-gray-900">
-                {teacherSummary.activeCount}/{totalPermissions}
-              </p>
-              <div className="mt-1 h-1 w-full rounded-full bg-gray-200">
-                <div
-                  className="h-1 rounded-full bg-purple-500 transition-all"
-                  style={{ width: `${activePercentage}%` }}
-                />
               </div>
             </div>
-            <div className="rounded border border-red-100 bg-red-50 p-1">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-red-500">
-                High-impact
-              </p>
-              <p className="mt-0.5 text-xs font-semibold text-red-700">
-                {teacherSummary.highImpactCount}
-              </p>
-            </div>
-            <div className="rounded border border-blue-200 bg-blue-50 p-1">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-blue-500">
-                Comms
-              </p>
-              <p className="mt-0.5 text-xs font-semibold text-blue-700">
-                {teacherSummary.communicationEnabled ? 'Allowed' : 'Restricted'}
-              </p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => handleTeacherPreset('all')} disabled={isSaving} className="rounded-lg border border-primary bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 disabled:opacity-50">Full access</button>
+              <button type="button" onClick={() => handleTeacherPreset('view')} disabled={isSaving} className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">View-only</button>
+              <button type="button" onClick={() => handleTeacherPreset('none')} disabled={isSaving} className="rounded-lg border border-error-200 bg-error-50 px-3 py-1.5 text-sm font-medium text-error-700 hover:bg-error-100 disabled:opacity-50">Revoke all</button>
             </div>
           </div>
         </section>
 
         {groupedPermissions.map((group) => {
-          const metadata =
-            TEACHER_PERMISSION_GROUP_METADATA[group.name] ?? {
-              icon: '⚙️',
-              description: 'Configure related capabilities.',
-            };
-          const sortedItems = [...group.items].sort(
-            (a, b) =>
-              (a.definition.order ?? 0) - (b.definition.order ?? 0),
-          );
+          const metadata = TEACHER_PERMISSION_GROUP_METADATA[group.name] ?? { icon: '⚙️', description: 'Configure related capabilities.' };
+          const sortedItems = [...group.items].sort((a, b) => (a.definition.order ?? 0) - (b.definition.order ?? 0));
           const isExpanded = expandedGroups.has(group.name);
-
           return (
-            <section
-              key={group.name}
-              className="rounded border border-gray-200 bg-white p-1.5 shadow-sm"
-            >
-              <header 
-                className="flex items-start gap-1 cursor-pointer"
-                onClick={() => toggleGroup(group.name)}
-              >
-                <span className="text-sm flex-shrink-0">{metadata.icon}</span>
+            <section key={group.name} className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+              <button type="button" onClick={() => toggleGroup(group.name)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition">
+                <span className="text-lg">{metadata.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                      {group.name}
-                    </h4>
-                    <span className="text-[9px] text-gray-400">
-                      {isExpanded ? '▼' : '▶'}
-                    </span>
-                  </div>
-                  {isExpanded && (
-                    <p className="text-[9px] text-gray-600 mt-0.5">
-                      {metadata.description}
-                    </p>
-                  )}
+                  <h4 className="text-sm font-semibold text-gray-900">{group.name}</h4>
+                  {isExpanded && <p className="text-xs text-gray-500 mt-0.5">{metadata.description}</p>}
                 </div>
-              </header>
+                <span className="text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+              </button>
               {isExpanded && (
-                <div className="mt-1 space-y-1">
+                <div className="border-t border-gray-100 px-4 py-3 space-y-2">
                   {sortedItems.map(({ definition }) => {
                     const value = teacherPermissions[definition.key];
                     return (
-                      <div
-                        key={definition.key}
-                        className={`rounded border px-1.5 py-1 transition ${
-                          value
-                            ? 'border-purple-200 bg-purple-50'
-                            : 'border-gray-200 bg-white'
-                        }`}
-                      >
-                        <div className="flex items-start gap-1">
-                          {definition.icon && (
-                            <span className="mt-0.5 text-xs text-gray-500 flex-shrink-0">
-                              {definition.icon}
-                            </span>
-                          )}
-                    <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap items-center gap-1">
-                                <p className="text-[10px] font-semibold text-gray-900">
-                                  {definition.label}
-                                </p>
-                                {definition.risk === 'high' && (
-                                  <span className="inline-flex items-center rounded-full bg-red-100 px-1 py-0.5 text-[8px] font-semibold text-red-700">
-                                    High
-                                  </span>
-                                )}
-                                {definition.defaultView && (
-                                  <span className="inline-flex items-center rounded-full bg-blue-100 px-1 py-0.5 text-[8px] font-semibold text-blue-700">
-                                    View
-                                  </span>
-                                )}
-                              </div>
-                              <p className="mt-0.5 text-[9px] text-gray-600">
-                                {definition.description}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                console.log('🔘 Teacher permission button clicked:', { key: definition.key, currentValue: value, newValue: !value });
-                                handleTeacherPermissionChange(
-                                  definition.key,
-                                  !value,
-                                );
-                              }}
-                              disabled={isSaving || !selectedTeacher}
-                              role="switch"
-                              aria-checked={value}
-                              className={`relative inline-flex h-4 w-7 items-center rounded-full transition flex-shrink-0 ${
-                                value ? 'bg-purple-600' : 'bg-gray-300'
-                              } ${isSaving || !selectedTeacher ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:opacity-80'}`}
-                            >
-                              <span
-                                className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${
-                                  value ? 'translate-x-3' : 'translate-x-0.5'
-                                }`}
-                              />
-                            </button>
-                          </div>
+                      <label key={definition.key} className={`flex items-center gap-3 p-3 rounded-lg border transition cursor-pointer ${value ? 'border-primary/30 bg-primary/5' : 'border-gray-100 bg-gray-50/50 hover:bg-gray-50'}`} title={definition.description}>
+                        <input type="checkbox" checked={value} onChange={() => handleTeacherPermissionChange(definition.key, !value)} disabled={isSaving || !selectedTeacher} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" aria-label={definition.label} />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium text-gray-900">{definition.label}</span>
+                          {definition.risk === 'high' && <span className="ml-2 inline-flex rounded-full bg-error/10 px-1.5 py-0.5 text-xs font-medium text-error-700">High</span>}
                         </div>
-                      );
-                    })}
+                      </label>
+                    );
+                  })}
                 </div>
               )}
             </section>
@@ -1986,197 +1839,54 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose, onUpdate
     );
 
     return (
-      <div className="space-y-1.5">
-        <section className="rounded border border-amber-200 bg-amber-50 p-1.5 shadow-sm">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <img
-                src={adminAvatar}
-                alt={selectedAdmin.fullName}
-                className="h-8 w-8 rounded-full border border-amber-300 object-cover flex-shrink-0"
-              />
+      <div className="space-y-6">
+        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <img src={adminAvatar} alt={selectedAdmin.fullName} className="h-14 w-14 rounded-full border-2 border-gray-200 object-cover flex-shrink-0" />
               <div className="min-w-0">
-                <div className="flex items-center gap-1 flex-wrap">
-                  <h3 className="text-xs font-semibold text-amber-900">
-                    {selectedAdmin.fullName}
-                  </h3>
-                  <span
-                    className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
-                      selectedAdmin.status === 'active'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    {selectedAdmin.status === 'active' ? 'Active' : 'Inactive'}
-                  </span>
-                    </div>
-                <p className="text-[9px] text-amber-900/80 truncate">{selectedAdmin.email}</p>
-                <p className="text-[9px] text-amber-900/60">
-                  Depts: {selectedAdmin.assignedDepartments.join(', ')}
-                </p>
+                <h3 className="text-lg font-semibold text-gray-900">{selectedAdmin.fullName}</h3>
+                <p className="text-sm text-gray-500 mt-0.5">{selectedAdmin.email}</p>
+                <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-600">
+                  <span>{adminSummary.activeCount} of {totalPermissions} permissions</span>
+                  {adminSummary.highImpactCount > 0 && <span className="text-error-600">{adminSummary.highImpactCount} high-impact</span>}
+                  {adminSummary.isPermissionAdmin && <span className="text-primary-600">Can manage permissions</span>}
+                </div>
               </div>
             </div>
-            <div className="flex flex-wrap gap-1">
-              <button
-                type="button"
-                onClick={() => handleAdminPreset('all')}
-                disabled={isSaving}
-                className="inline-flex items-center gap-0.5 rounded border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800 transition hover:bg-amber-200 disabled:opacity-50"
-              >
-                Full control
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAdminPreset('financeReports')}
-                disabled={isSaving}
-                className="inline-flex items-center gap-0.5 rounded border border-blue-300 bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold text-blue-800 transition hover:bg-blue-200 disabled:opacity-50"
-              >
-                Finance & reports
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAdminPreset('none')}
-                disabled={isSaving}
-                className="inline-flex items-center gap-0.5 rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
-              >
-                Lock down
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-1.5 grid gap-1 grid-cols-3">
-            <div className="rounded border border-amber-200 bg-white p-1">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-amber-700">
-                Active
-              </p>
-              <p className="mt-0.5 text-xs font-semibold text-amber-900">
-                {adminSummary.activeCount}/{totalPermissions}
-              </p>
-              <div className="mt-1 h-1 w-full rounded-full bg-amber-100">
-                <div
-                  className="h-1 rounded-full bg-amber-500 transition-all"
-                  style={{ width: `${activePercentage}%` }}
-                />
-              </div>
-            </div>
-            <div className="rounded border border-red-200 bg-red-50 p-1">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-red-600">
-                High-impact
-              </p>
-              <p className="mt-0.5 text-xs font-semibold text-red-700">
-                {adminSummary.highImpactCount}
-              </p>
-            </div>
-            <div className="rounded border border-indigo-200 bg-indigo-50 p-1">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-indigo-500">
-                Perm admin
-              </p>
-              <p className="mt-0.5 text-xs font-semibold text-indigo-700">
-                {adminSummary.isPermissionAdmin ? 'Yes' : 'No'}
-              </p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => handleAdminPreset('all')} disabled={isSaving} className="rounded-lg border border-primary bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 disabled:opacity-50">Full control</button>
+              <button type="button" onClick={() => handleAdminPreset('financeReports')} disabled={isSaving} className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">Finance & reports</button>
+              <button type="button" onClick={() => handleAdminPreset('none')} disabled={isSaving} className="rounded-lg border border-error-200 bg-error-50 px-3 py-1.5 text-sm font-medium text-error-700 hover:bg-error-100 disabled:opacity-50">Lock down</button>
             </div>
           </div>
         </section>
 
         {groupedPermissions.map((group) => {
-          const metadata =
-            ADMIN_PERMISSION_GROUP_METADATA[group.name] ?? {
-              icon: '⚙️',
-              description: 'Configure related administrative controls.',
-            };
-          const sortedItems = [...group.items].sort(
-            (a, b) =>
-              (a.definition.order ?? 0) - (b.definition.order ?? 0),
-          );
+          const metadata = ADMIN_PERMISSION_GROUP_METADATA[group.name] ?? { icon: '⚙️', description: 'Configure related administrative controls.' };
+          const sortedItems = [...group.items].sort((a, b) => (a.definition.order ?? 0) - (b.definition.order ?? 0));
           const isExpanded = expandedGroups.has(group.name);
-
           return (
-            <section
-              key={group.name}
-              className="rounded border border-amber-200 bg-white p-1.5 shadow-sm"
-            >
-              <header 
-                className="flex items-start gap-1 cursor-pointer"
-                onClick={() => toggleGroup(group.name)}
-              >
-                <span className="text-sm flex-shrink-0">{metadata.icon}</span>
+            <section key={group.name} className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+              <button type="button" onClick={() => toggleGroup(group.name)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition">
+                <span className="text-lg">{metadata.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                      {group.name}
-                    </h4>
-                    <span className="text-[9px] text-gray-400">
-                      {isExpanded ? '▼' : '▶'}
-                    </span>
-                  </div>
-                  {isExpanded && (
-                    <p className="text-[9px] text-amber-900/80 mt-0.5">
-                      {metadata.description}
-                    </p>
-                  )}
+                  <h4 className="text-sm font-semibold text-gray-900">{group.name}</h4>
+                  {isExpanded && <p className="text-xs text-gray-500 mt-0.5">{metadata.description}</p>}
                 </div>
-              </header>
+                <span className="text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+              </button>
               {isExpanded && (
-                <div className="mt-1 space-y-1">
+                <div className="border-t border-gray-100 px-4 py-3 space-y-2">
                   {sortedItems.map(({ definition, value }) => (
-                    <div
-                      key={definition.key}
-                      className={`rounded border px-1.5 py-1 transition ${
-                        value
-                          ? 'border-amber-300 bg-amber-100'
-                          : 'border-amber-100 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-start gap-1">
-                        {definition.icon && (
-                          <span className="mt-0.5 text-xs text-amber-600 flex-shrink-0">
-                            {definition.icon}
-                          </span>
-                        )}
-                    <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-1">
-                              <p className="text-[10px] font-semibold text-amber-900">
-                                {definition.label}
-                              </p>
-                              {definition.risk === 'high' && (
-                                <span className="inline-flex items-center rounded-full bg-red-100 px-1 py-0.5 text-[8px] font-semibold text-red-700">
-                                  Escalated
-                                </span>
-                              )}
-                              {definition.defaultView && (
-                                <span className="inline-flex items-center rounded-full bg-blue-100 px-1 py-0.5 text-[8px] font-semibold text-blue-700">
-                                  Analytics
-                                </span>
-                              )}
-                            </div>
-                            <p className="mt-0.5 text-[9px] text-amber-900/80">
-                              {definition.description}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              console.log('🔘 Admin permission button clicked:', { key: definition.key, currentValue: value, newValue: !value });
-                              handleAdminPermissionChange(definition.key, !value);
-                            }}
-                            disabled={isSaving || !selectedAdmin}
-                            role="switch"
-                            aria-checked={value}
-                            className={`relative inline-flex h-4 w-7 items-center rounded-full transition flex-shrink-0 ${
-                              value ? 'bg-amber-600' : 'bg-amber-200'
-                            } ${isSaving || !selectedAdmin ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:opacity-80'}`}
-                          >
-                            <span
-                              className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${
-                                value ? 'translate-x-3' : 'translate-x-0.5'
-                              }`}
-                            />
-                          </button>
-                        </div>
+                    <label key={definition.key} className={`flex items-center gap-3 p-3 rounded-lg border transition cursor-pointer ${value ? 'border-primary/30 bg-primary/5' : 'border-gray-100 bg-gray-50/50 hover:bg-gray-50'}`} title={definition.description}>
+                      <input type="checkbox" checked={value} onChange={() => handleAdminPermissionChange(definition.key, !value)} disabled={isSaving || !selectedAdmin} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" aria-label={definition.label} />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-900">{definition.label}</span>
+                        {definition.risk === 'high' && <span className="ml-2 inline-flex rounded-full bg-error/10 px-1.5 py-0.5 text-xs font-medium text-error-700">High</span>}
                       </div>
-                    ))}
+                    </label>
+                  ))}
                 </div>
               )}
             </section>
@@ -2187,385 +1897,167 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose, onUpdate
   };
 
   const content = (
-    <div className={`flex h-full w-full ${isFullPage ? '' : 'max-h-[98vh] max-w-[100vw]'} flex-col overflow-hidden ${isFullPage ? '' : 'rounded-lg'} bg-white ${isFullPage ? '' : 'shadow-2xl'} ${isFullPage ? '' : 'sm:max-w-[95vw]'}`}>
-        <div className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-indigo-700 px-4 py-4 text-white shadow-lg">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-widest text-blue-200 font-semibold">
-                    🔐 Permission Control
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                    bulkMode 
-                      ? 'bg-yellow-500 text-yellow-900' 
-                      : 'bg-blue-500/30 text-blue-100'
-                  }`}>
-                    {bulkMode ? '📦 Bulk Mode' : '👤 Single Mode'}
-                  </span>
-                </div>
-                {onClose && (
-                  <button
-                    onClick={onClose}
-                    className="text-white hover:text-blue-200 transition text-sm p-1 rounded hover:bg-white/10"
-                    aria-label="Close"
-                  >
-                    ✕
-                  </button>
-                )}
+    <div className={`flex h-full w-full ${isFullPage ? '' : 'max-h-[98vh] max-w-[100vw]'} flex-col overflow-hidden ${isFullPage ? '' : 'rounded-xl'} bg-white ${isFullPage ? '' : 'shadow-xl'} ${isFullPage ? '' : 'sm:max-w-[95vw]'} border border-gray-200`}>
+        {/* Header: clean, minimal */}
+        <header className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl font-semibold text-gray-900">
+                  Permission Management Center
+                </h1>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${bulkMode ? 'bg-accent/20 text-accent-700' : 'bg-primary/10 text-primary-700'}`}>
+                  {bulkMode ? 'Bulk' : 'Single'}
+                </span>
               </div>
-              <h2 className="text-lg font-bold mb-1">
-                Permission Management Center
-              </h2>
-              <p className="text-sm text-blue-100">
-                {bulkMode 
-                  ? 'Select multiple users and apply permissions in bulk for faster management.'
-                  : 'Manage individual user permissions with precision and control.'}
+              <p className="mt-1 text-sm text-gray-500">
+                {bulkMode ? 'Select users and apply permissions in bulk.' : 'Choose a user and manage their permissions.'}
               </p>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-                <p className="font-semibold text-white text-xs mb-1">👨‍🏫 Teachers</p>
-                <p className="text-white text-xl font-bold">{teachers.length}</p>
-              </div>
-              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-                <p className="font-semibold text-white text-xs mb-1">🛡️ Admins</p>
-                <p className="text-white text-xl font-bold">{admins.length}</p>
-              </div>
-              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-                <p className="font-semibold text-white text-xs mb-1">📊 Active Mode</p>
-                <p className="text-white text-lg font-bold truncate">
-                  {selectedType === 'teacher' ? 'Teachers' : 'Admins'}
-                </p>
-              </div>
-              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-                <p className="font-semibold text-white text-xs mb-1">✓ Status</p>
-                <p className="text-white text-lg font-bold truncate">
-                  {feedback?.message ? '✓ Updated' : 'Ready'}
-                </p>
-              </div>
-            </div>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
           </div>
-        </div>
+          <div className="mt-4 flex gap-4 text-sm">
+            <span className="text-gray-500">Teachers <strong className="text-gray-700">{teachers.length}</strong></span>
+            <span className="text-gray-500">Admins <strong className="text-gray-700">{admins.length}</strong></span>
+            {feedback?.message && (
+              <span className={`font-medium ${feedback.tone === 'success' ? 'text-success-600' : feedback.tone === 'error' ? 'text-error-600' : 'text-primary-600'}`}>
+                {feedback.message}
+              </span>
+            )}
+          </div>
+        </header>
 
-        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="flex flex-col space-y-3 overflow-y-auto">
-            <section className="flex-shrink-0 rounded-lg border-2 border-gray-200 bg-white p-3 shadow-md">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-bold text-gray-900">User Type</p>
-                <button
-                  type="button"
-                  onClick={toggleBulkMode}
-                  className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all shadow-sm ${
-                    bulkMode
-                      ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 shadow-yellow-200'
-                      : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300'
-                  }`}
-                >
-                  {bulkMode ? '📦 Bulk Mode' : '👤 Single Mode'}
-                </button>
-              </div>
-              <p className="text-xs text-gray-600 mb-3">
-                {bulkMode
-                  ? 'Select multiple users to apply permissions in bulk for faster management.'
-                  : 'Select a single user to manage their permissions individually.'}
-              </p>
+        <div className="grid min-h-0 flex-1 gap-0 overflow-hidden sm:gap-6 bg-gray-50/50 lg:grid-cols-[300px_minmax(0,1fr)] px-4 py-4 sm:px-6">
+          <aside className="flex flex-col gap-4 overflow-y-auto">
+            {/* User type + mode */}
+            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">User type</h2>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedType('teacher');
-                    setSelectedUser('');
-                    setFeedback(null);
-                    if (!bulkMode) {
-                      setSelectedUsers(new Set());
-                    }
-                  }}
-                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all shadow-sm ${
-                    selectedType === 'teacher'
-                      ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-purple-200'
-                      : 'border-2 border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50'
+                  onClick={() => { setSelectedType('teacher'); setSelectedUser(''); setFeedback(null); if (!bulkMode) setSelectedUsers(new Set()); }}
+                  className={`rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    selectedType === 'teacher' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  👨‍🏫 Teachers
-                  <span className="ml-1 text-xs opacity-75">({sortedTeachers.length})</span>
+                  Teachers ({sortedTeachers.length})
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedType('admin');
-                    setSelectedUser('');
-                    setFeedback(null);
-                    if (!bulkMode) {
-                      setSelectedUsers(new Set());
-                    }
-                  }}
-                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all shadow-sm ${
-                    selectedType === 'admin'
-                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-amber-200'
-                      : 'border-2 border-gray-200 bg-white text-gray-700 hover:border-amber-300 hover:bg-amber-50'
+                  onClick={() => { setSelectedType('admin'); setSelectedUser(''); setFeedback(null); if (!bulkMode) setSelectedUsers(new Set()); }}
+                  className={`rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    selectedType === 'admin' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  🛡️ Admins
-                  <span className="ml-1 text-xs opacity-75">({sortedAdmins.length})</span>
+                  Admins ({sortedAdmins.length})
+                </button>
+              </div>
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={toggleBulkMode}
+                  className={`w-full rounded-lg px-3 py-2 text-sm font-medium transition ${bulkMode ? 'bg-accent/20 text-accent-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  {bulkMode ? 'Switch to Single' : 'Switch to Bulk'}
                 </button>
               </div>
             </section>
 
             {bulkMode ? (
               <>
-                <section className="flex-shrink-0 rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3 shadow-md">
+                <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-bold text-gray-900">
-                      Select {selectedType === 'teacher' ? 'Teachers' : 'Admins'}
-                      <span className="ml-2 px-2 py-0.5 bg-blue-500 text-white rounded-full text-xs">
-                        {selectedUsers.size} selected
-                      </span>
-                    </label>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={selectAllUsers}
-                        className="px-3 py-1.5 rounded-lg border-2 border-blue-300 bg-white text-blue-700 hover:bg-blue-50 text-xs font-semibold transition shadow-sm"
-                      >
-                        ✓ Select All
-                      </button>
-                      <button
-                        type="button"
-                        onClick={clearSelection}
-                        className="px-3 py-1.5 rounded-lg border-2 border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-xs font-semibold transition shadow-sm"
-                      >
-                        ✕ Clear
-                      </button>
-                    </div>
+                    <h2 className="text-sm font-semibold text-gray-900">Select users</h2>
+                    <span className="text-xs text-gray-500">{selectedUsers.size} selected</span>
                   </div>
-                  <div className="max-h-64 overflow-y-auto space-y-2 border-2 border-blue-200 rounded-lg p-2 bg-white">
+                  <div className="flex gap-2 mb-3">
+                    <button type="button" onClick={selectAllUsers} className="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">Select all</button>
+                    <button type="button" onClick={clearSelection} className="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">Clear</button>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto space-y-1 rounded-lg border border-gray-200 bg-gray-50/50 p-2">
                     {(selectedType === 'teacher' ? sortedTeachers : sortedAdmins).map((user) => (
-                      <label
-                        key={user.id}
-                        className={`flex items-center gap-3 p-2 rounded-lg border-2 transition cursor-pointer ${
-                          selectedUsers.has(user.id)
-                            ? 'border-blue-500 bg-blue-50 shadow-sm'
-                            : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedUsers.has(user.id)}
-                          onChange={() => toggleUserSelection(user.id)}
-                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 focus:ring-2"
-                        />
+                      <label key={user.id} className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition ${selectedUsers.has(user.id) ? 'bg-primary/10 border border-primary/30' : 'bg-white border border-transparent hover:bg-gray-50'}`}>
+                        <input type="checkbox" checked={selectedUsers.has(user.id)} onChange={() => toggleUserSelection(user.id)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">
-                            {user.fullName}
-                          </p>
-                          <p className="text-xs text-gray-600 truncate">
-                            {user.email}
-                          </p>
+                          <p className="text-sm font-medium text-gray-900 truncate">{user.fullName}</p>
+                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
                         </div>
-                        {selectedUsers.has(user.id) && (
-                          <span className="text-blue-600 text-lg">✓</span>
-                        )}
                       </label>
                     ))}
                   </div>
                 </section>
-
                 {selectedUsers.size > 0 && (
-                  <section className="flex-shrink-0 rounded-lg border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 p-4 shadow-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-sm font-bold text-gray-900">
-                        Apply Permission to {selectedUsers.size} {selectedType}{selectedUsers.size !== 1 ? 's' : ''}
-                      </label>
-                      <span className="px-2 py-1 bg-green-500 text-white rounded-full text-xs font-semibold">
-                        Ready
-                      </span>
-                    </div>
-                    <div className="space-y-3">
-                      <select
-                        value={bulkPermission?.key || ''}
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            const permission = selectedType === 'teacher'
-                              ? TEACHER_PERMISSION_DEFINITIONS.find(d => d.key === e.target.value)
-                              : ADMIN_PERMISSION_DEFINITIONS.find(d => d.key === e.target.value);
-                            if (permission) {
-                              setBulkPermission({ key: e.target.value, value: true });
-                            }
-                          } else {
-                            setBulkPermission(null);
-                          }
-                        }}
-                        className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white font-medium"
-                      >
-                        <option value="">— Select a permission —</option>
-                        {(selectedType === 'teacher' ? TEACHER_PERMISSION_DEFINITIONS : ADMIN_PERMISSION_DEFINITIONS).map((def) => (
-                          <option key={def.key} value={def.key}>
-                            {def.icon} {def.label}
-                          </option>
-                        ))}
-                      </select>
-                      {bulkPermission && (
-                        <>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setBulkPermission({ ...bulkPermission, value: true })}
-                              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all shadow-sm ${
-                                bulkPermission.value
-                                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-green-200'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
-                              }`}
-                            >
-                              ✓ Enable
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setBulkPermission({ ...bulkPermission, value: false })}
-                              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all shadow-sm ${
-                                !bulkPermission.value
-                                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-red-200'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
-                              }`}
-                            >
-                              ✕ Disable
-                            </button>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={applyBulkPermission}
-                            disabled={isSaving}
-                            className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white transition-all hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2"
-                          >
-                            {isSaving ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Applying...
-                              </>
-                            ) : (
-                              <>
-                                <span>🚀</span>
-                                Apply to {selectedUsers.size} {selectedType}{selectedUsers.size !== 1 ? 's' : ''}
-                              </>
-                            )}
-                          </button>
-                        </>
-                      )}
-                    </div>
+                  <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <h2 className="text-sm font-semibold text-gray-900 mb-3">Apply permission</h2>
+                    <select value={bulkPermission?.key || ''} onChange={(e) => { if (e.target.value) { const p = (selectedType === 'teacher' ? TEACHER_PERMISSION_DEFINITIONS : ADMIN_PERMISSION_DEFINITIONS).find(d => d.key === e.target.value); if (p) setBulkPermission({ key: e.target.value, value: true }); } else setBulkPermission(null); }} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-primary focus:border-primary">
+                      <option value="">Select permission</option>
+                      {(selectedType === 'teacher' ? TEACHER_PERMISSION_DEFINITIONS : ADMIN_PERMISSION_DEFINITIONS).map((def) => <option key={def.key} value={def.key}>{def.label}</option>)}
+                    </select>
+                    {bulkPermission && (
+                      <div className="mt-3 space-y-2">
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => setBulkPermission({ ...bulkPermission, value: true })} className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${bulkPermission.value ? 'bg-success text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Enable</button>
+                          <button type="button" onClick={() => setBulkPermission({ ...bulkPermission, value: false })} className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${!bulkPermission.value ? 'bg-error text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Disable</button>
+                        </div>
+                        <button type="button" onClick={applyBulkPermission} disabled={isSaving} className="w-full rounded-lg bg-primary px-3 py-2.5 text-sm font-medium text-white hover:bg-primary-800 disabled:opacity-50 flex items-center justify-center gap-2">
+                          {isSaving ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /> : null}
+                          Apply to {selectedUsers.size} {selectedType}{selectedUsers.size !== 1 ? 's' : ''}
+                        </button>
+                      </div>
+                    )}
                   </section>
                 )}
               </>
             ) : (
-            <section className="flex-shrink-0 rounded-lg border-2 border-gray-200 bg-white p-3 shadow-md">
-              <label className="text-sm font-bold text-gray-900 mb-2 block">
-                Select {selectedType === 'teacher' ? 'Teacher' : 'Admin'}
-              </label>
-              <select
-                value={selectedUser}
-                onChange={(event) => setSelectedUser(event.target.value)}
-                className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white font-medium"
-              >
-                <option value="">— Choose a user —</option>
-                {selectedType === 'teacher'
-                  ? sortedTeachers.map((teacher) => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.fullName} — {teacher.email}
-                      </option>
-                    ))
-                  : sortedAdmins.map((admin) => (
-                      <option key={admin.id} value={admin.id}>
-                        {admin.fullName} — {admin.email}
-                      </option>
-                    ))}
-              </select>
-              <p className="mt-2 text-xs text-gray-600 bg-blue-50 p-2 rounded-lg border border-blue-200">
-                💡 <strong>Tip:</strong> {selectedType === 'teacher'
-                  ? 'Assign only the permissions needed for each teacher\'s role.'
-                  : 'Reserve elevated permissions for trusted administrators only.'}
-              </p>
-            </section>
+              <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <h2 className="text-sm font-semibold text-gray-900 mb-2">Select user</h2>
+                <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white focus:ring-2 focus:ring-primary focus:border-primary">
+                  <option value="">Choose {selectedType === 'teacher' ? 'teacher' : 'admin'}…</option>
+                  {selectedType === 'teacher' ? sortedTeachers.map((t) => <option key={t.id} value={t.id}>{t.fullName} — {t.email}</option>) : sortedAdmins.map((a) => <option key={a.id} value={a.id}>{a.fullName} — {a.email}</option>)}
+                </select>
+                <p className="mt-2 text-xs text-gray-500">Only grant permissions needed for this role.</p>
+              </section>
             )}
-
-            <section className="flex-shrink-0 rounded border border-gray-200 bg-white p-1.5 shadow-sm">
-              <p className="text-[10px] font-semibold text-gray-900">
-                Safety checklist
-              </p>
-              <ul className="mt-1 space-y-0.5 text-[9px] text-gray-600">
-                <li>• Review high-impact toggles regularly.</li>
-                <li>• Pair communication access with accountability.</li>
-                <li>• Keep permission presets aligned with policy.</li>
-              </ul>
-            </section>
           </aside>
 
-          <main className="min-h-0 overflow-y-auto space-y-1.5">
-            {feedback && (
-              <div
-                className={`flex-shrink-0 rounded border px-2 py-1 text-[10px] ${
-                  feedback.tone === 'success'
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                    : feedback.tone === 'error'
-                      ? 'border-red-200 bg-red-50 text-red-700'
-                      : 'border-blue-200 bg-blue-50 text-blue-700'
-                }`}
-              >
+          <main className="min-h-0 overflow-y-auto">
+            {feedback && !bulkMode && (
+              <div className={`mb-4 rounded-lg border px-4 py-3 text-sm ${feedback.tone === 'success' ? 'border-success-200 bg-success-50 text-success-800' : feedback.tone === 'error' ? 'border-error-200 bg-error-50 text-error-800' : 'border-primary-200 bg-primary-50 text-primary-800'}`}>
                 {feedback.message}
-            </div>
-          )}
+              </div>
+            )}
             {bulkMode && selectedUsers.size === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 px-2 py-8 text-center text-gray-500">
-                <div className="mb-2 text-2xl">📦</div>
-                <p className="text-xs font-semibold text-gray-700">
-                  Bulk Mode Active
-                </p>
-                <p className="mt-1 text-[10px] max-w-md">
-                  Select {selectedType === 'teacher' ? 'teachers' : 'admins'} from the sidebar to apply permissions in bulk.
-                </p>
+              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-white py-16 px-6 text-center">
+                <div className="text-4xl text-gray-300 mb-3">👥</div>
+                <p className="text-sm font-medium text-gray-700">Bulk mode</p>
+                <p className="mt-1 text-sm text-gray-500">Select {selectedType === 'teacher' ? 'teachers' : 'admins'} from the sidebar to apply permissions in bulk.</p>
               </div>
             ) : !bulkMode && !selectedUser ? (
-              <div className="flex flex-col items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 px-2 py-8 text-center text-gray-500">
-                <div className="mb-2 text-2xl">{selectedType === 'teacher' ? '👆' : '🛡️'}</div>
-                <p className="text-xs font-semibold text-gray-700">
-                  Select a {selectedType === 'teacher' ? 'teacher' : 'admin'} to continue
-                </p>
-                <p className="mt-1 text-[10px] max-w-md">
-                  Use the directory on the left to load an account and adjust its privileges.
-                </p>
+              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-white py-16 px-6 text-center">
+                <div className="text-4xl text-gray-300 mb-3">{selectedType === 'teacher' ? '👨‍🏫' : '🛡️'}</div>
+                <p className="text-sm font-medium text-gray-700">Select a {selectedType === 'teacher' ? 'teacher' : 'admin'}</p>
+                <p className="mt-1 text-sm text-gray-500">Use the sidebar to choose a user and manage their permissions.</p>
               </div>
-            ) : selectedType === 'teacher'
-              ? renderTeacherDetail()
-              : renderAdminDetail()}
+            ) : selectedType === 'teacher' ? renderTeacherDetail() : renderAdminDetail()}
           </main>
         </div>
 
-        <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between sm:justify-end gap-1 border-t border-gray-200 bg-white px-1.5 py-1.5">
-          {bulkMode && (
-            <div className="flex items-center gap-1 text-[10px] text-gray-600">
-              <span className="font-semibold">{selectedUsers.size}</span>
-              <span>{selectedType}{selectedUsers.size !== 1 ? 's' : ''} selected</span>
-            </div>
-          )}
-          <div className="flex gap-1">
-            {bulkMode && (
-              <button
-                type="button"
-                onClick={toggleBulkMode}
-                className="rounded border border-gray-300 bg-white px-2 py-1 text-[10px] font-semibold text-gray-700 transition hover:bg-gray-50"
-              >
-                Exit Bulk
-              </button>
-            )}
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 sm:flex-none rounded bg-gray-900 px-3 py-1 text-[10px] font-semibold text-white transition hover:bg-gray-700"
-              >
-                Done
-              </button>
-            )}
+        <footer className="flex-shrink-0 flex flex-col sm:flex-row justify-between sm:justify-end items-center gap-3 border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+          {bulkMode && <span className="text-sm text-gray-500">{selectedUsers.size} {selectedType}{selectedUsers.size !== 1 ? 's' : ''} selected</span>}
+          <div className="flex gap-2 w-full sm:w-auto">
+            {bulkMode && <button type="button" onClick={toggleBulkMode} className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Exit bulk</button>}
+            {onClose && <button type="button" onClick={onClose} className="flex-1 sm:flex-none rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-800">Done</button>}
           </div>
-        </div>
+        </footer>
       </div>
   );
 
@@ -2574,7 +2066,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose, onUpdate
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-1">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       {content}
     </div>
   );

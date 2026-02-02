@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import StudentAssignmentHistory from './StudentAssignmentHistory';
+import Button from './ui/Button';
 import { useNavigate } from 'react-router-dom';
 
 interface StudentReportsProps {
@@ -149,134 +150,74 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose, teacherView = 
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 py-6">
-      <div className="flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 px-4 py-6">
+      <div className="flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
         {/* Header */}
-        <header className="bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] px-6 sm:px-8 py-6 sm:py-8 border-b-4 border-accent shadow-lg">
+        <header className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-white">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-lg">Student Reports</h2>
-              <p className="text-white/95 mt-2 text-sm sm:text-base font-medium">View and manage student assignment history</p>
+              <h2 className="heading-page">Student reports</h2>
+              <p className="caption mt-1 text-gray-600">View assignment history by student</p>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleNavigateToAssignments}
-                className="px-5 sm:px-7 py-2.5 sm:py-3.5 bg-accent text-primary rounded-full text-sm sm:text-base font-extrabold transition-all shadow-2xl hover:scale-110 hover:bg-accent/90 border-2 border-white/40 whitespace-nowrap"
-              >
-                Manage Assignments
-              </button>
-              <button
-                onClick={onClose}
-                className="w-11 h-11 sm:w-13 sm:h-13 flex items-center justify-center bg-accent text-primary rounded-full transition-all text-2xl sm:text-3xl font-extrabold shadow-2xl hover:scale-110 hover:bg-accent/90 border-2 border-white/40"
-                title="Close"
-              >
-                ×
-              </button>
+            <div className="flex items-center gap-2">
+              <Button variant="primary" size="sm" onClick={handleNavigateToAssignments}>
+                Manage assignments
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onClose} className="min-w-[44px] min-h-[44px] p-0 text-gray-500 hover:text-gray-700">
+                <span aria-hidden>×</span>
+              </Button>
             </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 bg-gradient-to-b from-background to-white">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 bg-gray-50">
           <div className="space-y-6">
-            {/* Statistics Cards */}
-            {selectedProgram && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-                <div className="rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-soft-primary to-white p-4 sm:p-5 shadow-lg">
-                  <div className="text-2xl sm:text-3xl font-extrabold text-primary mb-1">
-                    {statistics.totalStudents}
-                  </div>
-                  <div className="text-xs sm:text-sm text-primary/70 font-semibold">
-                    Total Students
-                  </div>
-                </div>
-                <div className="rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-soft-primary to-white p-4 sm:p-5 shadow-lg">
-                  <div className="text-2xl sm:text-3xl font-extrabold text-primary mb-1">
-                    {statistics.activeStudents}
-                  </div>
-                  <div className="text-xs sm:text-sm text-primary/70 font-semibold">
-                    Active
-                  </div>
-                </div>
-                <div className="rounded-2xl border-2 border-accent/30 bg-gradient-to-br from-soft-accent to-white p-4 sm:p-5 shadow-lg">
-                  <div className="text-2xl sm:text-3xl font-extrabold text-accent mb-1">
-                    {statistics.totalAssignments}
-                  </div>
-                  <div className="text-xs sm:text-sm text-primary/70 font-semibold">
-                    Total Assignments
-                  </div>
-                </div>
-                <div className="rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-soft-primary to-white p-4 sm:p-5 shadow-lg">
-                  <div className="text-2xl sm:text-3xl font-extrabold text-primary mb-1">
-                    {statistics.averageAssignments}
-                  </div>
-                  <div className="text-xs sm:text-sm text-primary/70 font-semibold">
-                    Avg per Student
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Filters Section */}
-            <div className="rounded-3xl border-2 border-primary/20 bg-gradient-to-br from-white to-soft-primary p-5 sm:p-7 shadow-lg">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
-                <h3 className="text-lg sm:text-xl font-extrabold text-primary">Filters & Search</h3>
+            {/* Filters */}
+            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h3 className="heading-card">Search and filters</h3>
                 {(selectedProgram || searchQuery || statusFilter !== 'all') && (
-                  <button
-                    onClick={handleClearFilters}
-                    className="px-4 py-2 bg-accent text-primary rounded-lg text-sm font-extrabold hover:bg-accent/90 transition-all shadow-md"
-                  >
-                    Clear Filters
-                  </button>
+                  <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                    Clear filters
+                  </Button>
                 )}
               </div>
-              
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Program Selection */}
                 <div>
-                  <label className="block text-sm font-extrabold text-primary mb-2">
-                    Program
-                  </label>
+                  <label className="block body-text font-medium text-gray-700 mb-1">Program</label>
                   <select
                     value={selectedProgram}
                     onChange={(e) => {
                       setSelectedProgram(e.target.value);
                       setSelectedStudent(null);
                     }}
-                    className="w-full rounded-xl border-2 border-primary/30 bg-white px-4 py-2.5 text-sm text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold shadow-md transition-all hover:border-primary/50"
+                    className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   >
-                    <option value="">All Programs</option>
+                    <option value="">All programs</option>
                     {programs.map(program => (
                       <option key={program} value={program}>{program}</option>
                     ))}
                   </select>
                 </div>
-
-                {/* Search */}
                 <div>
-                  <label className="block text-sm font-extrabold text-primary mb-2">
-                    Search
-                  </label>
+                  <label className="block body-text font-medium text-gray-700 mb-1">Search</label>
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Name, email, or contact..."
-                    className="w-full rounded-xl border-2 border-primary/30 bg-white px-4 py-2.5 text-sm text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold shadow-md transition-all hover:border-primary/50 placeholder:text-primary/40"
+                    className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   />
                 </div>
-
-                {/* Status Filter */}
                 <div>
-                  <label className="block text-sm font-extrabold text-primary mb-2">
-                    Status
-                  </label>
+                  <label className="block body-text font-medium text-gray-700 mb-1">Status</label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full rounded-xl border-2 border-primary/30 bg-white px-4 py-2.5 text-sm text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold shadow-md transition-all hover:border-primary/50"
+                    className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   >
-                    <option value="all">All Status</option>
+                    <option value="all">All</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                     <option value="pending">Pending</option>
@@ -288,58 +229,44 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose, teacherView = 
 
             {/* Student List */}
             {filteredStudents.length > 0 && (
-              <div className="rounded-3xl border-2 border-primary/20 bg-gradient-to-br from-white to-soft-primary p-5 sm:p-7 shadow-lg">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-extrabold text-primary mb-1">
-                      Students
-                    </h3>
-                    <p className="text-xs sm:text-sm text-primary/70">
-                      Click on a student to view their assignment history
-                    </p>
-                  </div>
-                  <span className="px-4 py-2 bg-primary text-white rounded-full text-xs sm:text-sm font-extrabold shadow-md">
-                    {filteredStudents.length} {filteredStudents.length === 1 ? 'student' : 'students'}
-                  </span>
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <h3 className="heading-section">Students</h3>
+                  <p className="caption mt-0.5 text-gray-600">
+                    Tap a student to view their assignment history · {filteredStudents.length} {filteredStudents.length === 1 ? 'student' : 'students'}
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+                <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                   {filteredStudents.map(student => {
                     const assignmentCount = getAssignmentCount(student.id);
                     return (
                       <button
                         key={student.id}
+                        type="button"
                         onClick={() => handleStudentClick(student.id)}
-                        className={`rounded-2xl border-2 p-4 sm:p-5 text-center transition-all shadow-lg hover:shadow-xl transform ${
+                        className={`rounded-lg border p-4 text-center transition min-h-[44px] flex flex-col items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                           selectedStudent === student.id
-                            ? 'border-primary bg-gradient-to-br from-soft-primary to-primary/10 scale-105 ring-4 ring-primary/20'
-                            : 'border-primary/30 bg-white hover:border-primary hover:bg-gradient-to-br hover:from-soft-primary hover:to-white hover:scale-102'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                         }`}
                       >
-                        <div className={`w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 rounded-full flex items-center justify-center text-lg sm:text-xl font-extrabold shadow-md transition-all ${
-                          selectedStudent === student.id
-                            ? 'bg-gradient-to-br from-primary to-[rgba(var(--color-primary-rgb),0.8)] text-white scale-110'
-                            : 'bg-gradient-to-br from-accent to-[rgba(var(--color-accent-rgb),0.8)] text-primary hover:scale-105'
+                        <div className={`w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-2 rounded-full flex items-center justify-center text-base font-medium body-text ${
+                          selectedStudent === student.id ? 'bg-primary text-white' : 'bg-gray-100 text-gray-800'
                         }`}>
                           {getInitials(student.fullName)}
                         </div>
-                        <div className={`font-extrabold text-xs sm:text-sm truncate transition-colors mb-1 ${
-                          selectedStudent === student.id ? 'text-primary' : 'text-primary'
-                        }`}>
+                        <div className="body-text font-medium text-gray-900 truncate w-full mb-0.5">
                           {student.fullName}
                         </div>
-                        <div className="text-[10px] sm:text-xs text-primary/60 truncate mb-2">
+                        <div className="caption text-gray-600 truncate w-full mb-2">
                           {student.email}
                         </div>
-                        <div className="flex items-center justify-center gap-1">
-                          <span className={`text-[10px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full ${
-                            student.status === 'active'
-                              ? 'bg-primary/20 text-primary border border-primary/30'
-                              : 'bg-soft-primary text-primary/70 border border-primary/20'
-                          }`}>
+                        <div className="flex flex-wrap items-center justify-center gap-1">
+                          <span className="caption px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
                             {student.status}
                           </span>
                           {assignmentCount > 0 && (
-                            <span className="text-[10px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30">
+                            <span className="caption px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                               {assignmentCount} {assignmentCount === 1 ? 'assignment' : 'assignments'}
                             </span>
                           )}
@@ -353,26 +280,19 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose, teacherView = 
 
             {/* Empty State */}
             {filteredStudents.length === 0 && (
-              <div className="rounded-3xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-soft-primary to-white p-10 sm:p-14 text-center shadow-lg">
+              <div className="bg-white rounded-lg border border-gray-200 p-8 sm:p-10 text-center">
                 {selectedProgram || searchQuery || statusFilter !== 'all' ? (
                   <>
-                    <p className="text-primary text-lg sm:text-xl font-extrabold mb-2">No students found</p>
-                    <p className="text-primary/70 text-sm sm:text-base mb-4">
-                      No students match your current filters.
-                    </p>
-                    <button
-                      onClick={handleClearFilters}
-                      className="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-extrabold hover:bg-primary/90 transition-all shadow-md"
-                    >
-                      Clear Filters
-                    </button>
+                    <p className="body-text text-gray-700 mb-2">No students found</p>
+                    <p className="caption text-gray-600 mb-4">No students match your current filters.</p>
+                    <Button variant="primary" size="md" onClick={handleClearFilters}>
+                      Clear filters
+                    </Button>
                   </>
                 ) : (
                   <>
-                    <p className="text-primary text-lg sm:text-xl font-extrabold mb-2">No students available</p>
-                    <p className="text-primary/70 text-sm sm:text-base">
-                      Use the filters above to search for students or select a program.
-                    </p>
+                    <p className="body-text text-gray-700 mb-2">No students yet</p>
+                    <p className="caption text-gray-600">Use the filters above to search or select a program.</p>
                   </>
                 )}
               </div>

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, memo } from 'react';
 import { FixedSizeList } from 'react-window';
 import { useData } from '../contexts/DataContext';
-import Button from './Button';
+import Button from './ui/Button';
 
 interface TeacherListProps {
   teachers?: any[];
@@ -154,7 +154,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
     const rating = getPerformanceRating(teacher);
 
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 transition-colors">
         {/* Header: Avatar, Name, Admin Badge */}
         <div className="flex items-start gap-3 mb-4">
           <div className="relative flex-shrink-0">
@@ -193,15 +193,14 @@ const TeacherList: React.FC<TeacherListProps> = ({
           </div>
         </div>
 
-        {/* Contact Info */}
         <div className="space-y-2 mb-4 pb-4 border-b border-gray-100">
           <div>
-            <p className="text-xs text-gray-500 mb-0.5">Email</p>
-            <p className="text-sm text-gray-900 truncate">{teacher.email || 'No email'}</p>
+            <p className="caption mb-0.5">Email</p>
+            <p className="body-text text-gray-900 truncate">{teacher.email || 'No email'}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500 mb-0.5">Phone</p>
-            <p className="text-sm text-gray-900">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
+            <p className="caption mb-0.5">Phone</p>
+            <p className="body-text text-gray-900">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
           </div>
         </div>
 
@@ -241,45 +240,29 @@ const TeacherList: React.FC<TeacherListProps> = ({
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2 pt-2">
-          <button
-            onClick={() => onTeacherSelect(teacher)}
-            className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
-          >
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 pt-2">
+          <Button variant="primary" size="md" onClick={() => onTeacherSelect(teacher)} className="w-full sm:w-auto min-h-[44px]" fullWidthMobile>
             View
-          </button>
+          </Button>
           {!teacher.isAdmin && (
-            <button
-              onClick={() => onEditTeacher(teacher)}
-              className="px-3 py-1.5 text-xs font-medium text-amber-600 bg-amber-50 rounded-md hover:bg-amber-100 transition-colors"
-            >
+            <Button variant="outline" size="md" onClick={() => onEditTeacher(teacher)} className="w-full sm:w-auto min-h-[44px]" fullWidthMobile>
               Edit
-            </button>
+            </Button>
           )}
           {!teacher.isAdmin && (
-            <button
-              onClick={() => onDeleteTeacher(teacher.id)}
-              className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
-            >
+            <Button variant="outline" size="md" onClick={() => onDeleteTeacher(teacher.id)} className="w-full sm:w-auto min-h-[44px]" fullWidthMobile>
               Delete
-            </button>
+            </Button>
           )}
           {onCredentials && (
-            <button
-              onClick={() => onCredentials(teacher)}
-              className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
-            >
+            <Button variant="outline" size="md" onClick={() => onCredentials(teacher)} className="w-full sm:w-auto min-h-[44px]" fullWidthMobile>
               Credentials
-            </button>
+            </Button>
           )}
           {onAnalytics && (
-            <button
-              onClick={() => onAnalytics(teacher)}
-              className="px-3 py-1.5 text-xs font-medium text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
-            >
+            <Button variant="outline" size="md" onClick={() => onAnalytics(teacher)} className="w-full sm:w-auto min-h-[44px]" fullWidthMobile>
               Analytics
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -391,46 +374,30 @@ const TeacherList: React.FC<TeacherListProps> = ({
           )}
         </td>
 
-        {/* Actions */}
         <td className="px-4 py-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => data.onTeacherSelect(teacher)}
-              className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-            >
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="primary" size="sm" onClick={() => data.onTeacherSelect(teacher)} className="min-h-[44px]">
               View
-            </button>
+            </Button>
             {!teacher.isAdmin && (
-              <button
-                onClick={() => data.onEditTeacher(teacher)}
-                className="px-2 py-1 text-xs font-medium text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded transition-colors"
-              >
+              <Button variant="outline" size="sm" onClick={() => data.onEditTeacher(teacher)} className="min-h-[44px]">
                 Edit
-              </button>
+              </Button>
             )}
             {!teacher.isAdmin && (
-              <button
-                onClick={() => data.onDeleteTeacher(teacher.id)}
-                className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
-              >
-                Del
-              </button>
+              <Button variant="outline" size="sm" onClick={() => data.onDeleteTeacher(teacher.id)} className="min-h-[44px]">
+                Delete
+              </Button>
             )}
             {data.onCredentials && (
-              <button
-                onClick={() => data.onCredentials(teacher)}
-                className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-              >
+              <Button variant="outline" size="sm" onClick={() => data.onCredentials(teacher)} className="min-h-[44px]">
                 Credentials
-              </button>
+              </Button>
             )}
             {data.onAnalytics && (
-              <button
-                onClick={() => data.onAnalytics(teacher)}
-                className="px-2 py-1 text-xs font-medium text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
-              >
+              <Button variant="outline" size="sm" onClick={() => data.onAnalytics(teacher)} className="min-h-[44px]">
                 Analytics
-              </button>
+              </Button>
             )}
           </div>
         </td>
@@ -440,168 +407,114 @@ const TeacherList: React.FC<TeacherListProps> = ({
   TeacherRow.displayName = 'TeacherRow';
 
   return (
-    <div className="space-y-6 bg-gray-50 min-h-screen py-6">
-      {/* Header */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Teacher Directory</h1>
-            <p className="text-gray-600">
-              Manage and view all registered teachers and administrators
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {onAddTeacher && (
-              <Button
-                onClick={onAddTeacher}
-                variant="primary"
-                size="md"
-              >
-                <span className="mr-2">+</span>
-                Add Teacher
-              </Button>
-            )}
-            {refreshData && (
-              <Button
-                onClick={async () => {
-                  if (refreshData) {
-                    await refreshData();
-                  }
-                }}
-                variant="outline"
-                size="md"
-                title="Refresh data from database"
-              >
-                🔄 Refresh
-              </Button>
-            )}
-            <Button variant="outline" size="md">
-              Export
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <p className="caption text-gray-600">
+          <span className="font-medium text-gray-900">{filteredTeachers.length}</span>
+          {filteredTeachers.length === 1 ? ' teacher' : ' teachers'}
+          {filteredTeachers.length !== teachers.length && ` (from ${teachers.length} total)`}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {onAddTeacher && (
+            <Button onClick={onAddTeacher} variant="primary" size="md" fullWidthMobile className="min-h-[44px]">
+              Add teacher
             </Button>
-            <Button variant="outline" size="md">
-              Import
+          )}
+          {refreshData && (
+            <Button
+              onClick={async () => { if (refreshData) await refreshData(); }}
+              variant="outline"
+              size="md"
+              className="min-h-[44px]"
+              title="Refresh list"
+            >
+              Refresh
             </Button>
-          </div>
-        </div>
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span className="font-semibold text-gray-900">{filteredTeachers.length}</span>
-            <span>{filteredTeachers.length === 1 ? 'teacher' : 'teachers'} found</span>
-            {filteredTeachers.length !== teachers.length && (
-              <>
-                <span className="text-gray-400">•</span>
-                <span className="text-gray-500">Filtered from {teachers.length} total</span>
-              </>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Filter Section */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Search & Filters</h2>
-          <p className="text-sm text-gray-500">Refine your search to find specific teachers</p>
-        </div>
+      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+        <h2 className="heading-card mb-3">Search and filters</h2>
         
         <div className="space-y-4">
-          {/* Search Bar */}
+        <div>
+          <label className="block body-text font-medium text-gray-700 mb-1">Search by name or email</label>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Type to search..."
+            className="block w-full min-h-[44px] pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary body-text"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Search Teachers
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, email, or ID..."
-                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm"
-              />
-            </div>
+            <label className="block body-text font-medium text-gray-700 mb-1">Subject</label>
+            <select
+              value={selectedSpecialization}
+              onChange={(e) => setSelectedSpecialization(e.target.value)}
+              className="block w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary body-text bg-white"
+            >
+              <option value="all">All subjects</option>
+              {uniqueSpecializations.map(spec => (
+                <option key={spec} value={spec}>{spec}</option>
+              ))}
+            </select>
           </div>
-
-          {/* Filter Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Specialization
-              </label>
-              <select
-                value={selectedSpecialization}
-                onChange={(e) => setSelectedSpecialization(e.target.value)}
-                className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
-              >
-                <option value="all">All Specializations</option>
-                {uniqueSpecializations.map(spec => (
-                  <option key={spec} value={spec}>{spec}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
-              >
-                <option value="all">All Status</option>
-                {uniqueStatuses.map(status => (
-                  <option key={status} value={status}>{status.replace('-', ' ')}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Location
-              </label>
-              <select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
-              >
-                <option value="all">All Locations</option>
-                {uniqueLocations.map(location => (
-                  <option key={location} value={location}>{location}</option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block body-text font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="block w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary body-text bg-white"
+            >
+              <option value="all">All</option>
+              {uniqueStatuses.map(status => (
+                <option key={status} value={status}>{status.replace('-', ' ')}</option>
+              ))}
+            </select>
           </div>
+          <div>
+            <label className="block body-text font-medium text-gray-700 mb-1">Location</label>
+            <select
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              className="block w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary focus:border-primary body-text bg-white"
+            >
+              <option value="all">All</option>
+              {uniqueLocations.map(location => (
+                <option key={location} value={location}>{location}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Button
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedSpecialization('all');
-                setSelectedStatus('all');
-                setSelectedLocation('all');
-              }}
-              variant="secondary"
-              size="sm"
-            >
-              Clear Filters
-            </Button>
-            <Button
-              onClick={() => {
-                setSortBy('name');
-                setSortOrder('asc');
-              }}
-              variant="secondary"
-              size="sm"
-            >
-              Reset Sort
-            </Button>
-          </div>
+        <div className="flex flex-wrap gap-2 pt-3">
+          <Button
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedSpecialization('all');
+              setSelectedStatus('all');
+              setSelectedLocation('all');
+            }}
+            variant="outline"
+            size="md"
+            className="min-h-[44px]"
+          >
+            Clear filters
+          </Button>
+          <Button
+            onClick={() => { setSortBy('name'); setSortOrder('asc'); }}
+            variant="outline"
+            size="md"
+            className="min-h-[44px]"
+          >
+            Reset sort
+          </Button>
+        </div>
         </div>
       </div>
 
@@ -612,14 +525,9 @@ const TeacherList: React.FC<TeacherListProps> = ({
             <TeacherCard key={teacher.id || teacher._id || index} teacher={teacher} />
           ))
         ) : (
-          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <h3 className="mt-4 text-sm font-medium text-gray-900">No teachers found</h3>
-            <p className="mt-2 text-sm text-gray-500">
-              Try adjusting your search or filter criteria
-            </p>
+          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+            <p className="body-text font-medium text-gray-900">No teachers found</p>
+            <p className="caption mt-1">Try changing your search or filters</p>
           </div>
         )}
       </div>
@@ -629,11 +537,11 @@ const TeacherList: React.FC<TeacherListProps> = ({
         <div className="p-6 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Teachers</h2>
-            <div className="text-sm text-gray-600">
-              Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{' '}
+            <p className="caption">
+              Showing <span className="font-medium text-gray-900">{startIndex + 1}</span> to{' '}
               <span className="font-semibold text-gray-900">{Math.min(startIndex + itemsPerPage, filteredTeachers.length)}</span> of{' '}
               <span className="font-semibold text-gray-900">{filteredTeachers.length}</span>
-            </div>
+            </p>
           </div>
         </div>
 

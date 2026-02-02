@@ -6,17 +6,22 @@ interface StudentSidebarProps {
   onClose: () => void;
 }
 
+/** Student nav: Dashboard, Assignments, Chat (Messages), Profile (+ optional PDF Homework, Courses). */
+const STUDENT_NAV_ITEMS = [
+  { id: 'dashboard', name: 'Dashboard', href: '/student/dashboard', icon: 'DB' },
+  { id: 'assignments', name: 'My Assignments', href: '/student/assignments', icon: 'AS' },
+  { id: 'messages', name: 'Messages', href: '/student/messages', icon: 'MS' },
+  { id: 'profile', name: 'My Profile', href: '/student/profile', icon: 'PF' },
+  { id: 'pdf-homework', name: 'PDF Homework', href: '/student/pdf-homework', icon: '📄' },
+  { id: 'courses', name: 'My Courses', href: '/student/courses', icon: 'CR' },
+  { id: 'progress', name: 'My Progress', href: '/student/progress', icon: 'PR' },
+  { id: 'payments', name: 'My Payments', href: '/student/payments', icon: 'PY' },
+];
+
 const StudentSidebar: React.FC<StudentSidebarProps> = ({ isOpen, onClose }) => {
-  const navigation = [
-    { name: 'Dashboard', href: '/student/dashboard', icon: 'DB' },
-    { name: 'My Assignments', href: '/student/assignments', icon: 'AS' },
-    { name: 'PDF Homework', href: '/student/pdf-homework', icon: '📄' },
-    { name: 'My Courses', href: '/student/courses', icon: 'CR' },
-    { name: 'My Progress', href: '/student/progress', icon: 'PR' },
-    { name: 'My Payments', href: '/student/payments', icon: 'PY' },
-    { name: 'My Profile', href: '/student/profile', icon: 'PF' },
-    { name: 'Messages', href: '/student/messages', icon: 'MS' },
-  ];
+  // Core allowed links for students: Dashboard, Assignments, Chat (Messages), Profile
+  const allowedIds = ['dashboard', 'assignments', 'messages', 'profile', 'pdf-homework', 'courses', 'progress', 'payments'];
+  const navigation = STUDENT_NAV_ITEMS.filter((item) => allowedIds.includes(item.id));
 
   return (
     <>
@@ -49,7 +54,7 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ isOpen, onClose }) => {
           <nav className="flex-1 px-4 py-4 space-y-2">
             {navigation.map((item) => (
               <NavLink
-                key={item.name}
+                key={item.id}
                 to={item.href}
                 onClick={onClose}
                 className={({ isActive }) =>

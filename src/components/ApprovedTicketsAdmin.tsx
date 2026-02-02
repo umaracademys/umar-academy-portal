@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import Card from './Card';
+import Button from './ui/Button';
 
 interface ApprovedTicketsAdminProps {
   onClose: () => void;
@@ -339,77 +339,67 @@ const ApprovedTicketsAdmin: React.FC<ApprovedTicketsAdminProps> = ({ onClose }) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col border-2 border-primary/30">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-2 border-accent/50">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-                <span className="text-2xl">✓</span>
-                Approved Tickets
-              </h2>
-              <p className="text-white/80 text-sm mt-1">View approved tickets and assign homework</p>
+              <h2 className="heading-page">Resolved tickets</h2>
+              <p className="caption mt-1 text-gray-600">View resolved tickets and assign homework</p>
             </div>
-            <button
-              onClick={onClose}
-              className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors text-xl font-bold"
-            >
-              ×
-            </button>
+            <Button variant="ghost" size="sm" onClick={onClose} className="min-w-[44px] min-h-[44px] p-0 text-gray-500 hover:text-gray-700">
+              <span aria-hidden>×</span>
+            </Button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div className="px-4 sm:px-6 py-4 bg-gray-50 border-b border-gray-200">
           <div className="flex flex-wrap items-center gap-4">
-            <label className="text-sm font-semibold text-gray-700">Filter by:</label>
-            
+            <label className="body-text font-medium text-gray-700">Filter by</label>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as any)}
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+              className="min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary"
             >
-              <option value="all">All Types</option>
+              <option value="all">All types</option>
               <option value="sabq">Sabq</option>
               <option value="sabqi">Sabqi</option>
               <option value="manzil">Manzil</option>
             </select>
-            
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value as any)}
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+              className="min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary"
             >
               <option value="today">Today</option>
               <option value="7days">Last 7 days</option>
               <option value="30days">Last 30 days</option>
               <option value="custom">Custom range</option>
             </select>
-            
             {dateFilter === 'custom' && (
               <>
                 <input
                   type="date"
                   value={customStartDate}
                   onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                  className="min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   placeholder="Start date"
                 />
-                <span className="text-gray-600">to</span>
+                <span className="caption text-gray-600">to</span>
                 <input
                   type="date"
                   value={customEndDate}
                   onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                  className="min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   placeholder="End date"
                 />
               </>
             )}
-            
-            <div className="ml-auto text-sm text-gray-600">
-              Showing {tickets.length} approved ticket{tickets.length !== 1 ? 's' : ''}
-            </div>
+            <p className="ml-auto caption text-gray-600">
+              {tickets.length} ticket{tickets.length !== 1 ? 's' : ''}
+            </p>
           </div>
         </div>
 
@@ -421,57 +411,52 @@ const ApprovedTicketsAdmin: React.FC<ApprovedTicketsAdminProps> = ({ onClose }) 
             </div>
           ) : tickets.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No approved tickets found for the selected period.</p>
+              <p className="body-text text-gray-700">No resolved tickets for this period</p>
+              <p className="caption mt-1 text-gray-600">Try a different date or filter</p>
             </div>
           ) : (
             <div className="space-y-4">
               {tickets.map((ticket) => {
                 const ticketDate = ticket.sentAt ? new Date(ticket.sentAt) : (ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(ticket.createdAt));
                 return (
-                  <Card key={ticket._id || ticket.id} className="border-2 border-gray-200 hover:border-primary/50 transition-colors">
-                    <div className="p-4">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-bold text-primary">{ticket.studentName}</h3>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getTypeColor(ticket.type)}`}>
-                              {ticket.type.toUpperCase()}
+                  <div key={ticket._id || ticket.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="p-4 sm:p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h3 className="heading-card">{ticket.studentName}</h3>
+                            <span className="px-2 py-0.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                              {ticket.type || 'Ticket'}
                             </span>
                             {ticket.sentToAssignmentId && (
-                              <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-300">
-                                ✓ Assignment Created
+                              <span className="px-2 py-0.5 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                Homework assigned
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600">
+                          <p className="body-text text-gray-600">
                             Teacher: {ticket.assignedTeacherName || ticket.assignedTeacherId || 'N/A'}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Approved: {formatDateTime(ticketDate)}
+                          <p className="caption text-gray-500 mt-0.5">
+                            Resolved: {formatDateTime(ticketDate)}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleViewTicket(ticket)}
-                            className="px-3 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm"
-                            title="View Ticket Details"
-                          >
+                        <div className="flex flex-wrap gap-2 shrink-0">
+                          <Button variant="outline" size="sm" onClick={() => handleViewTicket(ticket)}>
                             View
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-red-200 text-red-700 hover:bg-red-50"
                             onClick={() => handleDeleteTicket(ticket)}
                             disabled={deletingTicketId === (ticket._id || ticket.id)}
-                            className="px-3 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Delete Ticket"
                           >
-                            {deletingTicketId === (ticket._id || ticket.id) ? 'Deleting...' : 'Delete'}
-                          </button>
-                          <button
-                            onClick={() => setSelectedTicket(ticket)}
-                            className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm"
-                          >
-                            {ticket.sentToAssignmentId ? 'Update Homework' : 'Assign Homework'}
-                          </button>
+                            {deletingTicketId === (ticket._id || ticket.id) ? 'Deleting...' : 'Close ticket'}
+                          </Button>
+                          <Button variant="primary" size="sm" onClick={() => setSelectedTicket(ticket)}>
+                            {ticket.sentToAssignmentId ? 'Update homework' : 'Assign homework'}
+                          </Button>
                         </div>
                       </div>
 
@@ -558,7 +543,7 @@ const ApprovedTicketsAdmin: React.FC<ApprovedTicketsAdminProps> = ({ onClose }) 
                         </div>
                       )}
                     </div>
-                  </Card>
+                  </div>
                 );
               })}
             </div>

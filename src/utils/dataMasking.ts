@@ -96,30 +96,33 @@ export const maskStudent = (student: any, index: number = 0, options: MaskingOpt
   return masked;
 };
 
+/** Apply optional mask to a single field (shared by maskTeacher, maskUser). */
+function applyOptionMask(
+  masked: Record<string, unknown>,
+  options: MaskingOptions,
+  optionKey: keyof MaskingOptions,
+  fieldKey: string,
+  value: string | undefined,
+  index: number,
+  maskFn: (v: string, i: number) => string
+): void {
+  if (options[optionKey] && value) {
+    (masked as Record<string, string>)[fieldKey] = maskFn(value, index);
+  }
+}
+
 /**
  * Mask teacher data
  */
 export const maskTeacher = (teacher: any, index: number = 0, options: MaskingOptions = defaultOptions): any => {
   if (!teacher) return teacher;
-  
   const masked = { ...teacher };
-  
-  if (options.maskNames && masked.fullName) {
-    masked.fullName = maskName(masked.fullName, index);
-  }
-  
-  if (options.maskEmails && masked.email) {
-    masked.email = maskEmail(masked.email, index);
-  }
-  
-  if (options.maskPhones && masked.contact) {
-    masked.contact = maskPhone(masked.contact, index);
-  }
-  
+  applyOptionMask(masked, options, 'maskNames', 'fullName', masked.fullName, index, maskName);
+  applyOptionMask(masked, options, 'maskEmails', 'email', masked.email, index, maskEmail);
+  applyOptionMask(masked, options, 'maskPhones', 'contact', masked.contact, index, maskPhone);
   if (options.maskAddresses && masked.address) {
     masked.address = `456 Demo Avenue, City ${index + 1}, State 54321`;
   }
-  
   return masked;
 };
 
@@ -128,17 +131,9 @@ export const maskTeacher = (teacher: any, index: number = 0, options: MaskingOpt
  */
 export const maskUser = (user: any, index: number = 0, options: MaskingOptions = defaultOptions): any => {
   if (!user) return user;
-  
   const masked = { ...user };
-  
-  if (options.maskNames && masked.name) {
-    masked.name = maskName(masked.name, index);
-  }
-  
-  if (options.maskEmails && masked.email) {
-    masked.email = maskEmail(masked.email, index);
-  }
-  
+  applyOptionMask(masked, options, 'maskNames', 'name', masked.name, index, maskName);
+  applyOptionMask(masked, options, 'maskEmails', 'email', masked.email, index, maskEmail);
   return masked;
 };
 

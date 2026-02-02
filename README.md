@@ -149,6 +149,29 @@ The dashboards currently use mock data. To integrate with a real backend:
 2. Replace mock data with API calls
 3. Add loading states and error handling
 
+## CLEANUP & LEGACY NOTES
+
+### Phase A (Deletions)
+- **Root:** Unused test scripts removed: `test-all-phases.js`, `test-phase3.js`, `test-script-complete.js`, `test-script-simple.js`, `test-error-endpoint.js`, `test-homework-fields.js`, `test-api-validation.js`. Not in `package.json`; not imported anywhere.
+- **Frontend:** `src/components/WeeklyEvaluationForm.tsx` removed (unused; `TeacherDashboard` uses `EnhancedWeeklyEvaluationForm` only).
+- Details: `docs/audits/PHASE_A_DELETION_REPORT.md`.
+
+### Phase B (Moves)
+- **Backend one-off scripts** moved to `backend/scripts/`. Run from repo root: `node backend/scripts/<scriptName>.js [args]`. Scripts used by npm (e.g. `createDeveloper.js`, `seedDatabase.js`, `createTestUsers.js`) remain in `backend/` root.
+- **Documentation** consolidated: root `.md` (except README) → `docs/audits/`; `backend/docs/*.md` and backend `.md` → `docs/backend/`; `src/docs/*.md` → `docs/frontend/`.
+- Details: `PHASE_B_REPORT.md` (repo root).
+
+### Build
+- **Mushaf + app:** Run `pnpm run build:mushaf` then `pnpm run build:fast` (or full `pnpm run build` if TypeScript check passes).
+- Full `pnpm run build` may fail on strict TypeScript until types are fixed; `build:fast` after mushaf build produces the production bundle.
+
+### Safe to remove vs legacy
+- **Safe to remove:** Only files that are not imported, not in `package.json`, and not required for production or dev (see Phase A report).
+- **Legacy / manual:** `backend/scripts/*.js` are ops/diagnostic scripts; run only when instructed. `src/components/permission-manager-v2/` is an alternate UI not wired in; do not remove without product decision.
+- **References:** `docs/audits/DEVELOPER_ACCESS_GUIDE.md`, `docs/backend/`, `docs/audits/PHASE_A_DELETION_REPORT.md`, `CLEANUP_INVENTORY_AND_PLAN.md` (in `docs/audits/`).
+
+---
+
 ## License
 
 MIT License - Feel free to use this project for educational purposes.

@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '../../../components/Header';
-import StatCard from '../../../components/StatCard';
-import Card from '../../../components/Card';
+import Sidebar from '../../../components/Sidebar';
+import AppLayout from '../../../components/layout/AppLayout';
+import Card, { CardHeader, CardContent } from '../../../components/ui/Card';
+import Button from '../../../components/ui/Button';
 // DebugPanel only in development
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const DebugPanel = isDevelopment ? lazy(() => import('../../../components/DebugPanel')) : null;
@@ -382,105 +384,89 @@ const StudentDashboard: React.FC = () => {
     }
   }, [selectedAssignment, currentStudent, submissionData]);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   if (!currentStudent) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Student Profile Not Found</h1>
-            <p className="text-gray-600 mb-4">We couldn't find your student profile.</p>
-            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 max-w-md mx-auto">
-              <h3 className="font-bold text-yellow-800 mb-2">Debug Information:</h3>
-              <p className="text-sm text-yellow-700">User: {user ? user.name : 'Not logged in'}</p>
-              <p className="text-sm text-yellow-700">Email: {user?.email || 'No email'}</p>
-              <p className="text-sm text-yellow-700">Students in system: {students.length}</p>
+        <Header onMenuClick={() => setSidebarOpen((o) => !o)} />
+        <AppLayout
+          sidebar={
+            <Sidebar
+              activeSection="overview"
+              onSectionChange={() => {}}
+              isMobileOpen={sidebarOpen}
+              onMobileToggle={() => setSidebarOpen((o) => !o)}
+              onMobileClose={() => setSidebarOpen(false)}
+            />
+          }
+          sidebarOpen={sidebarOpen}
+          onOverlayClick={() => setSidebarOpen(false)}
+          maxWidth="7xl"
+        >
+          <div className="space-y-4">
+            <h1 className="heading-page text-gray-900">Student profile not found</h1>
+            <p className="body-text text-gray-600">We couldn't find your student profile.</p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md">
+              <p className="caption text-yellow-800">User: {user ? user.name : 'Not logged in'} · Email: {user?.email || 'No email'}</p>
             </div>
-            <div className="mt-4">
-              <button 
-                onClick={() => window.location.reload()} 
-                className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition-all shadow-md"
-              >
-                Refresh Page
-              </button>
-            </div>
+            <Button variant="primary" size="md" onClick={() => window.location.reload()} fullWidthMobile>Refresh page</Button>
           </div>
-        </div>
+        </AppLayout>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      
-      <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4 py-2">
-        {/* Header Section - Compact */}
-        <div className="mb-2 rounded-lg border border-gray-200 bg-white px-2 py-2">
-          <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-0.5">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">Student Portal</span>
-              <h1 className="text-lg font-bold text-primary">Dashboard</h1>
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Link
-                to="/student/assignments"
-                className="inline-flex items-center justify-center rounded bg-accent px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-accent/90"
-              >
-                Assignments
-              </Link>
-              <button
-                onClick={() => setShowPersonalMushaf(true)}
-                className="inline-flex items-center justify-center rounded border border-primary px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-soft-primary"
-              >
-                Mushaf
-              </button>
-              {!isAfterSchool && (
-                <button
-                  onClick={() => setShowTestResults(true)}
-                  className="inline-flex items-center justify-center rounded border border-primary px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-soft-primary"
-                >
-                  Tests
-                </button>
-              )}
-              <button
-                onClick={() => setShowWeeklyEvaluations(true)}
-                className="inline-flex items-center justify-center rounded border border-primary px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-soft-primary"
-              >
-                Evaluations
-              </button>
-              <Link
-                to="/student/profile"
-                className="inline-flex items-center justify-center rounded border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                Profile
-              </Link>
-            </div>
-          </div>
+      <Header onMenuClick={() => setSidebarOpen((o) => !o)} />
+      <AppLayout
+        sidebar={
+          <Sidebar
+            activeSection="overview"
+            onSectionChange={() => {}}
+            isMobileOpen={sidebarOpen}
+            onMobileToggle={() => setSidebarOpen((o) => !o)}
+            onMobileClose={() => setSidebarOpen(false)}
+          />
+        }
+        sidebarOpen={sidebarOpen}
+        onOverlayClick={() => setSidebarOpen(false)}
+        maxWidth="7xl"
+      >
+      <div className="space-y-4">
+        <div>
+          <h1 className="heading-page text-gray-900">Dashboard</h1>
+          <p className="caption mt-1">
+            {currentStudent?.fullName}
+            {studentAssignments.length > 0 && ` · ${completedAssignments.length} of ${studentAssignments.length} completed · ${averageGrade}% average`}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <Link to="/student/assignments">
+            <Button variant="primary" size="md" fullWidthMobile>Assignments</Button>
+          </Link>
+          <Button variant="outline" size="md" onClick={() => setShowPersonalMushaf(true)} fullWidthMobile>Mushaf</Button>
+          {!isAfterSchool && (
+            <Button variant="outline" size="md" onClick={() => setShowTestResults(true)} fullWidthMobile>Tests</Button>
+          )}
+          <Button variant="outline" size="md" onClick={() => setShowWeeklyEvaluations(true)} fullWidthMobile>Evaluations</Button>
+          <Link to="/student/profile">
+            <Button variant="outline" size="md" fullWidthMobile>Profile</Button>
+          </Link>
         </div>
 
-        {/* Statistics Grid - Compact */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
-          <StatCard title="Total" value={studentAssignments.length} icon="TA" />
-          <StatCard title="Completed" value={completedAssignments.length} icon="CP" />
-          <StatCard title="Grade" value={`${averageGrade}%`} icon="AG" />
-          <StatCard title="Pending" value={pendingAssignments.length} icon="PD" />
-        </div>
-
-        {/* Teacher Pair Information - Wrapped */}
         {pairInfo && pairInfo.pair && (
-          <div className="mb-2">
-            <Card title="">
-              <button
-                onClick={() => setExpandedSections(prev => ({ ...prev, teacherPair: !prev.teacherPair }))}
-                className="w-full flex items-center justify-between mb-1.5 pb-1.5 border-b border-gray-200"
-              >
-                <span className="text-sm font-bold text-primary">My Teacher Pair</span>
-                <span className="text-[9px] text-gray-600">
-                  {expandedSections.teacherPair ? '▼' : '▶'}
-                </span>
-              </button>
-              {expandedSections.teacherPair && (
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setExpandedSections(prev => ({ ...prev, teacherPair: !prev.teacherPair }))}
+              className="w-full flex items-center justify-between min-h-[44px] px-4 py-3 border-b border-gray-100 text-left"
+            >
+              <span className="heading-card">My Teacher Pair</span>
+              <span className="caption">{expandedSections.teacherPair ? '▼' : '▶'}</span>
+            </button>
+            {expandedSections.teacherPair && (
               <div className="rounded border border-primary/20 bg-primary/5 p-2">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div>
@@ -554,15 +540,12 @@ const StudentDashboard: React.FC = () => {
                   </div>
                   </div>
                 )}
-                </div>
-              )}
-            </Card>
+              </div>
+            )}
           </div>
         )}
 
-
-        {/* Quick Access Cards - Compact */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Link
             to="/student/assignments"
             className="block rounded border border-primary/20 bg-white p-2 hover:border-primary transition-all"
@@ -611,7 +594,9 @@ const StudentDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-2">
           {/* Profile Information - Compact */}
           <div className="lg:col-span-1">
-            <Card title="Profile">
+            <Card padding="md">
+              <CardHeader><h3 className="heading-card">Profile</h3></CardHeader>
+              <CardContent>
               <div className="text-center mb-2">
                 <img
                   src={currentStudent.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentStudent.fullName)}&background=1F3224&color=fff`}
@@ -652,12 +637,14 @@ const StudentDashboard: React.FC = () => {
                   </button>
                 </div>
               </div>
+              </CardContent>
             </Card>
           </div>
 
-          {/* Recent Assignments - Compact */}
           <div className="lg:col-span-2">
-            <Card title={`Assignments (${studentAssignments.length})`}>
+            <Card padding="md">
+              <CardHeader><h3 className="heading-card">Assignments ({studentAssignments.length})</h3></CardHeader>
+              <CardContent>
               {studentAssignments.length === 0 ? (
                 <div className="text-center py-6 text-gray-500">
                   <p className="text-xs font-semibold">No assignments yet</p>
@@ -813,15 +800,15 @@ const StudentDashboard: React.FC = () => {
                   })}
                 </div>
               )}
-              
+              </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Bottom Section - Quick Actions and Progress - Compact */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-2">
-          {/* Quick Actions - Compact */}
-          <Card title="Quick Actions">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card padding="md">
+              <CardHeader><h3 className="heading-card">Quick Actions</h3></CardHeader>
+              <CardContent>
             <div className="grid grid-cols-2 gap-1.5">
               {currentStudent?.assignedTeacher && (() => {
                 const assignedTeacher = teachers.find(t => {
@@ -861,11 +848,13 @@ const StudentDashboard: React.FC = () => {
                 <div className="text-[9px] text-gray-600">Info</div>
               </Link>
             </div>
+              </CardContent>
           </Card>
 
-          {/* Academic Progress - Compact */}
-          <Card title="Progress">
-            <div className="grid grid-cols-2 gap-2">
+          <Card padding="md">
+              <CardHeader><h3 className="heading-card">Progress</h3></CardHeader>
+              <CardContent>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <h4 className="font-semibold text-gray-900 mb-1.5 text-[10px] uppercase">Assignments</h4>
                 <div className="space-y-1">
@@ -893,11 +882,11 @@ const StudentDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
+              </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Personal Mushaf Modal */}
       {showPersonalMushaf && currentStudent && (
         <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="text-white">Loading Mushaf...</div></div>}>
           <StudentPersonalMushaf 
@@ -964,6 +953,7 @@ const StudentDashboard: React.FC = () => {
           <DebugPanel />
         </Suspense>
       )}
+      </AppLayout>
     </div>
   );
 };

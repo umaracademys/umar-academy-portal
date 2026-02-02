@@ -8,6 +8,7 @@ import { MushafMistake } from '@umar-academy/mushaf';
 import { getQuranChapters, Chapter } from '@umar-academy/mushaf';
 import { MistakeBadgeHighlight } from './workflow/MistakeBadgeHighlight';
 import ClassworkEntryCard from './ClassworkEntryCard';
+import Button from './ui/Button';
 
 interface EnhancedAssignmentFormProps {
   studentId: string;
@@ -1139,46 +1140,37 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[96vh] overflow-hidden flex flex-col my-auto">
-        {/* Modern Header with Gradient */}
-        <div className="px-6 py-4 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  {assignmentId ? 'Edit' : 'Create'} Assignment
-                </h2>
-                <p className="text-sm text-gray-600 mt-0.5 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  {student?.fullName || 'Student'}
-                </p>
-              </div>
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-3 sm:p-6 overflow-y-auto">
+      <div className="bg-white rounded-lg border border-gray-200 w-full max-w-5xl max-h-[96vh] overflow-hidden flex flex-col my-auto">
+        {/* Header */}
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-white">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="heading-page">
+                {assignmentId ? 'Edit assignment' : 'Create assignment'}
+              </h2>
+              <p className="caption mt-1 text-gray-600">
+                {assignmentId ? 'Update assignment details' : 'Share new classwork or homework with students'}
+              </p>
             </div>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-2 transition-colors"
+              className="min-w-[44px] min-h-[44px] shrink-0"
               aria-label="Close"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+              Close
+            </Button>
           </div>
         </div>
 
-        {/* Modern Form with Better Spacing */}
+            {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-6">
-            {/* ✅ FIX 1: Student Info Section - Read-only if from ticket */}
-            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+          <div className="p-4 sm:p-6 space-y-6">
+            {/* Student Info Section */}
+            <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                   <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1186,9 +1178,9 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                   </svg>
                   Student Information
                   {prefillTicket && (
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                      From Ticket
-                    </span>
+                  <span className="px-2 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                    From Ticket
+                  </span>
                   )}
                 </h3>
               </div>
@@ -1212,15 +1204,12 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
 
             {/* ✅ FIX 2: Ticket Review Summary Section (Read-only) */}
             {prefillTicket && (
-              <div className="bg-blue-50 rounded-xl border-2 border-blue-200 p-4">
+              <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                  <h3 className="heading-card flex items-center gap-2">
                     Review Summary (Read-only)
                   </h3>
-                  <span className="px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">
+                  <span className="px-2 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
                     {prefillTicket.type.toUpperCase()}
                   </span>
                 </div>
@@ -1307,22 +1296,19 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
 
             {/* Modern Ticket History Section */}
             {ticketLogs.length > 0 && (
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 overflow-hidden">
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setShowTicketLog(!showTicketLog)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-blue-100/50 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 min-h-[44px] hover:bg-gray-50 transition-colors body-text text-gray-900"
                 >
                   <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="font-semibold text-gray-900">Ticket History</span>
-                    <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded-full">
+                    <span className="heading-card">Ticket history</span>
+                    <span className="px-2 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
                       {ticketLogs.length}
                     </span>
                   </div>
-                  <svg className={`w-5 h-5 text-gray-600 transition-transform ${showTicketLog ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-5 h-5 text-gray-500 transition-transform ${showTicketLog ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -2033,38 +2019,26 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
             />
           </div>
 
-            {/* Modern Submit Buttons */}
-            <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
-              <button
+            {/* Actions */}
+            <div className="flex flex-wrap justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
+              <Button
                 type="button"
+                variant="outline"
+                size="md"
                 onClick={onClose}
-                className="px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm"
                 disabled={isSaving}
+                className="min-h-[44px]"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-sm flex items-center gap-2"
+                size="md"
                 disabled={isSaving || !isValid}
+                className="min-h-[44px]"
               >
-                {isSaving ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    {assignmentId ? 'Update Assignment' : 'Create Assignment'}
-                  </>
-                )}
-              </button>
+                {isSaving ? 'Saving...' : assignmentId ? 'Save changes' : 'Create assignment'}
+              </Button>
             </div>
           </div>
         </form>

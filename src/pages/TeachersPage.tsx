@@ -1,119 +1,85 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useData } from '../contexts/DataContext';
+import Header from '../components/Header';
+import Sidebar from '../components/Sidebar';
+import AppLayout from '../components/layout/AppLayout';
+import Button from '../components/ui/Button';
+import EmptyState from '../components/ui/EmptyState';
 import TeacherList from '../components/TeacherList';
 import TeacherProfile from '../components/TeacherProfile';
 import TeacherRegistrationForm from '../components/TeacherRegistrationForm';
 import TeacherCredentials from '../components/TeacherCredentials';
+import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
+import { useLoadingState } from '../hooks/useLoadingState';
 
 const TeachersPage: React.FC = () => {
   const { user } = useAuth();
   const { teachers, admins, deleteTeacher, refreshData } = useData();
-  
-  // Redirect teachers to their dashboard - this page is for admin/superadmin only
-  if (user?.role === 'teacher') {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  // Redirect students to their dashboard
-  if (user?.role === 'student') {
-    return <Navigate to="/student/dashboard" replace />;
-  }
+  const { loading, error, clearError, run } = useLoadingState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [showTeacherForm, setShowTeacherForm] = useState(false);
   const [showTeacherProfile, setShowTeacherProfile] = useState(false);
   const [showTeacherCredentials, setShowTeacherCredentials] = useState(false);
 
-  // Refresh data when page loads to ensure accuracy
-  useEffect(() => {
-    if (refreshData) {
-      refreshData();
-    }
-  }, [refreshData]);
+  if (user?.role === 'teacher') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  if (user?.role === 'student') {
+    return <Navigate to="/student/dashboard" replace />;
+  }
 
-  // Combine teachers and admins, marking admins with a flag
-  // ✅ FIX: Improved deduplication - prioritize admins over teachers when same email exists
+  useEffect(() => {
+    if (!refreshData) return;
+    run(refreshData);
+  }, [refreshData, run]);
+
   const combinedTeachers = React.useMemo(() => {
-    const teachersList = teachers.map(t => ({ ...t, isAdmin: false }));
-    const adminsList = admins.map(a => ({
+    const teachersList = teachers.map((t: any) => ({ ...t, isAdmin: false }));
+    const adminsList = admins.map((a: any) => ({
       ...a,
       isAdmin: true,
-      // Map admin fields to teacher-like structure for compatibility
       department: a.assignedDepartments?.[0] || 'Administration',
       location: 'Local' as const,
       employmentType: 'Full Time' as const,
     }));
-    
-    // Create maps for efficient lookup
     const teachersByEmail = new Map<string, any>();
     const teachersById = new Map<string, any>();
     const adminsByEmail = new Map<string, any>();
     const adminsById = new Map<string, any>();
-    
-    // Index teachers by email and ID
-    teachersList.forEach(teacher => {
+    teachersList.forEach((teacher: any) => {
       const email = teacher.email?.toLowerCase().trim();
       const id = (teacher as any)._id?.toString() || teacher.id?.toString() || '';
       if (email) teachersByEmail.set(email, teacher);
       if (id) teachersById.set(id, teacher);
     });
-    
-    // Index admins by email and ID
-    adminsList.forEach(admin => {
+    adminsList.forEach((admin: any) => {
       const email = admin.email?.toLowerCase().trim();
       const id = (admin as any)._id?.toString() || admin.id?.toString() || '';
       if (email) adminsByEmail.set(email, admin);
       if (id) adminsById.set(id, admin);
     });
-    
-    // Build deduplicated list - prioritize admins over teachers
     const deduplicated: any[] = [];
     const seenEmails = new Set<string>();
     const seenIds = new Set<string>();
-    const duplicates: any[] = [];
-    
-    // First, add all admins (they take priority)
     for (const admin of adminsList) {
-      const email = admin.email?.toLowerCase().trim();
-      const id = (admin as any)._id?.toString() || admin.id?.toString() || '';
-      
+      const email = (admin as any).email?.toLowerCase().trim();
+      const id = (admin as any)._id?.toString() || (admin as any).id?.toString() || '';
       if (email) seenEmails.add(email);
       if (id) seenIds.add(id);
       deduplicated.push(admin);
     }
-    
-    // Then, add teachers only if they don't conflict with admins
     for (const teacher of teachersList) {
-      const email = teacher.email?.toLowerCase().trim();
-      const id = (teacher as any)._id?.toString() || teacher.id?.toString() || '';
-      
-      const isDuplicateByEmail = email && seenEmails.has(email);
-      const isDuplicateById = id && seenIds.has(id);
-      
-      if (isDuplicateByEmail || isDuplicateById) {
-        duplicates.push(teacher);
-        if (import.meta.env.DEV) {
-          console.warn('⚠️ Duplicate teacher/admin in combined list:', {
-            fullName: teacher.fullName,
-            email: teacher.email,
-            id: id,
-            isAdmin: false,
-            duplicateBy: isDuplicateByEmail ? 'email' : 'id',
-            reason: 'Teacher record exists but admin record with same email/ID already added'
-          });
-        }
-      } else {
+      const email = (teacher as any).email?.toLowerCase().trim();
+      const id = (teacher as any)._id?.toString() || (teacher as any).id?.toString() || '';
+      const isDup = (email && seenEmails.has(email)) || (id && seenIds.has(id));
+      if (!isDup) {
         if (email) seenEmails.add(email);
         if (id) seenIds.add(id);
         deduplicated.push(teacher);
       }
     }
-    
-    if (duplicates.length > 0 && import.meta.env.DEV) {
-      console.warn(`⚠️ Removed ${duplicates.length} duplicate teacher/admin(s) from combined list (prioritized admins over teachers)`);
-    }
-    
     return deduplicated;
   }, [teachers, admins]);
 
@@ -123,7 +89,6 @@ const TeachersPage: React.FC = () => {
   };
 
   const handleEditTeacher = (teacher: any) => {
-    // Don't allow editing admins through teacher form
     if (teacher.isAdmin) {
       alert('Admin profiles cannot be edited through the teacher form. Please use admin management.');
       return;
@@ -144,84 +109,115 @@ const TeachersPage: React.FC = () => {
   };
 
   const handleDeleteTeacher = async (teacherId: string) => {
-    if (!teacherId) {
-      return;
-    }
-
+    if (!teacherId) return;
     const confirmed = window.confirm('Are you sure you want to delete this teacher?');
-    if (!confirmed) {
-      return;
-    }
-
+    if (!confirmed) return;
     try {
       await deleteTeacher(teacherId);
-      alert('Teacher deleted successfully.');
       setSelectedTeacher(null);
       setShowTeacherProfile(false);
-      if (refreshData) {
-        await refreshData();
-      }
+      if (refreshData) await refreshData();
     } catch (err) {
       console.error('Failed to delete teacher:', err);
       alert('Failed to delete teacher. Please try again.');
     }
   };
 
+  const handleRetry = () => {
+    clearError();
+    if (refreshData) run(refreshData);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Teacher List (includes admins) */}
-        <TeacherList
-          teachers={combinedTeachers}
-          onTeacherSelect={handleTeacherSelect}
-          onEditTeacher={handleEditTeacher}
-          onDeleteTeacher={handleDeleteTeacher}
-          onAddTeacher={handleAddTeacher}
-          onCredentials={handleCredentials}
-        />
-      </div>
+    <div className="min-h-screen bg-background">
+      <Header onMenuClick={() => setSidebarOpen((o) => !o)} />
+      <AppLayout
+        sidebar={
+          <Sidebar
+            activeSection="teachers"
+            onSectionChange={() => {}}
+            isMobileOpen={sidebarOpen}
+            onMobileToggle={() => setSidebarOpen((o) => !o)}
+            onMobileClose={() => setSidebarOpen(false)}
+          />
+        }
+        sidebarOpen={sidebarOpen}
+        onOverlayClick={() => setSidebarOpen(false)}
+        maxWidth="7xl"
+      >
+        <section className="space-y-4">
+          <div>
+            <h1 className="heading-page text-gray-900">Teachers</h1>
+            <p className="caption mt-1">View and manage teaching staff</p>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-4 sm:px-5 py-4 sm:py-5">
+            {error ? (
+              <EmptyState
+                title="Could not load teachers"
+                message={error}
+                action={
+                  <Button variant="primary" size="md" onClick={handleRetry} fullWidthMobile>
+                    Retry
+                  </Button>
+                }
+              />
+            ) : loading && !combinedTeachers.length ? (
+              <div className="flex flex-col items-center justify-center py-12" role="status" aria-label="Loading teachers">
+                <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-3" />
+                <p className="body-text text-gray-600">Loading teachers...</p>
+              </div>
+            ) : (
+              <TeacherList
+                teachers={combinedTeachers}
+                onTeacherSelect={handleTeacherSelect}
+                onEditTeacher={handleEditTeacher}
+                onDeleteTeacher={handleDeleteTeacher}
+                onAddTeacher={handleAddTeacher}
+                onCredentials={handleCredentials}
+              />
+            )}
+          </div>
+          </div>
+        </section>
 
-      {/* Teacher Profile Modal */}
-      {showTeacherProfile && selectedTeacher && (
-        <TeacherProfile
-          teacher={selectedTeacher}
-          onClose={() => {
-            setShowTeacherProfile(false);
-            setSelectedTeacher(null);
-          }}
-          onEdit={(teacher) => {
-            setShowTeacherProfile(false);
-            setSelectedTeacher(teacher);
-            setShowTeacherForm(true);
-          }}
-        />
-      )}
+        {showTeacherProfile && selectedTeacher && (
+          <TeacherProfile
+            teacher={selectedTeacher}
+            onClose={() => {
+              setShowTeacherProfile(false);
+              setSelectedTeacher(null);
+            }}
+            onEdit={(teacher) => {
+              setShowTeacherProfile(false);
+              setSelectedTeacher(teacher);
+              setShowTeacherForm(true);
+            }}
+          />
+        )}
 
-      {/* Edit Teacher Form Modal */}
-      {showTeacherForm && (
-        <TeacherRegistrationForm
-          onClose={() => {
-            setShowTeacherForm(false);
-            setSelectedTeacher(null);
-            if (refreshData) {
-              refreshData();
-            }
-          }}
-          teacher={selectedTeacher}
-          isEdit={!!selectedTeacher}
-        />
-      )}
+        {showTeacherForm && (
+          <TeacherRegistrationForm
+            onClose={() => {
+              setShowTeacherForm(false);
+              setSelectedTeacher(null);
+              if (refreshData) refreshData();
+            }}
+            teacher={selectedTeacher}
+            isEdit={!!selectedTeacher}
+          />
+        )}
 
-      {/* Teacher Credentials Modal */}
-      {showTeacherCredentials && selectedTeacher && (
-        <TeacherCredentials
-          teacher={selectedTeacher}
-          onClose={() => {
-            setShowTeacherCredentials(false);
-            setSelectedTeacher(null);
-          }}
-        />
-      )}
+        {showTeacherCredentials && selectedTeacher && (
+          <TeacherCredentials
+            teacher={selectedTeacher}
+            onClose={() => {
+              setShowTeacherCredentials(false);
+              setSelectedTeacher(null);
+            }}
+          />
+        )}
+      </AppLayout>
     </div>
   );
 };

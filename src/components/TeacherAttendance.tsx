@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Card from './Card';
+import Button from './ui/Button';
 
 interface TeacherAttendanceProps {
   teacher: any;
@@ -93,46 +93,42 @@ const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ teacher, onClose 
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg border border-gray-200 max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white p-6">
-          <div className="flex justify-between items-center">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-2xl font-bold">Attendance & Schedule</h2>
-              <p className="text-primary-100">{teacher.fullName} - {teacher.id}</p>
+              <h2 className="heading-page">Attendance & schedule</h2>
+              <p className="caption mt-1 text-gray-600">{teacher.fullName}</p>
             </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setShowMarkAttendance(true)}
-                className="px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition"
-              >
-                Mark Attendance
-              </button>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-              >
+            <div className="flex items-center gap-2">
+              <Button variant="primary" size="sm" onClick={() => setShowMarkAttendance(true)}>
+                Mark present
+              </Button>
+              <Button variant="outline" size="sm" onClick={onClose}>
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
+        <div className="border-b border-gray-200 px-4 sm:px-6">
+          <nav className="flex gap-4" role="tablist">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition body-text min-h-[44px] ${
                   activeTab === tab.id
-                    ? 'border-primary-500 text-primary-600'
+                    ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <span className="mr-2">{tab.icon}</span>
+                <span className="mr-2" aria-hidden>{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
@@ -140,55 +136,49 @@ const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ teacher, onClose 
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0">
           {activeTab === 'schedule' && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">Weekly Schedule</h3>
-                <div className="flex space-x-2">
-                  <button className="px-3 py-1 bg-primary-600 text-white text-sm rounded hover:bg-primary-700 transition">
-                    + Add Class
-                  </button>
-                  <button className="px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition">
-                    Export Schedule
-                  </button>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="heading-section">Weekly schedule</h3>
+                <div className="flex gap-2">
+                  <Button variant="primary" size="sm">+ Add class</Button>
+                  <Button variant="outline" size="sm">Export</Button>
                 </div>
               </div>
-
               <div className="space-y-4">
                 {scheduleData.weekly.map((day, index) => (
-                  <Card key={index} title={day.day}>
-                    <div className="space-y-3">
+                  <div key={index} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                      <h4 className="heading-card">{day.day}</h4>
+                    </div>
+                    <div className="p-4 space-y-3">
                       {day.classes.length > 0 ? (
                         day.classes.map((classItem, classIndex) => (
-                          <div key={classIndex} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                                <span className="text-primary-600 font-bold">📚</span>
+                          <div key={classIndex} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 min-h-[44px]">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                                <span className="text-primary font-semibold" aria-hidden>📚</span>
                               </div>
-                              <div>
-                                <h4 className="font-semibold text-gray-900">{classItem.course}</h4>
-                                <p className="text-sm text-gray-600">{classItem.time} • {classItem.room}</p>
-                                <p className="text-xs text-gray-500">{classItem.students} students</p>
+                              <div className="min-w-0">
+                                <h4 className="body-text font-medium text-gray-900">{classItem.course}</h4>
+                                <p className="caption text-gray-600">{classItem.time} · {classItem.room}</p>
+                                <p className="caption text-gray-500">{classItem.students} students</p>
                               </div>
                             </div>
-                            <div className="flex space-x-2">
-                              <button className="px-3 py-1 bg-primary-600 text-white text-sm rounded hover:bg-primary-700 transition">
-                                Edit
-                              </button>
-                              <button className="px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition">
-                                Cancel
-                              </button>
+                            <div className="flex gap-2 shrink-0">
+                              <Button variant="primary" size="sm">Edit</Button>
+                              <Button variant="outline" size="sm">Cancel</Button>
                             </div>
                           </div>
                         ))
                       ) : (
-                        <div className="text-center py-4 text-gray-500">
-                          <p>No classes scheduled</p>
+                        <div className="text-center py-6">
+                          <p className="body-text text-gray-600">No classes scheduled</p>
                         </div>
                       )}
                     </div>
-                  </Card>
+                  </div>
                 ))}
               </div>
             </div>
@@ -196,110 +186,79 @@ const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ teacher, onClose 
 
           {activeTab === 'attendance' && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">Attendance Records</h3>
-                <div className="flex space-x-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <h3 className="heading-section">Attendance</h3>
+                <div className="flex gap-2 items-center">
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="px-3 py-1 border border-gray-300 rounded text-sm"
+                    className="min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   />
-                  <button className="px-3 py-1 bg-primary-600 text-white text-sm rounded hover:bg-primary-700 transition">
-                    Filter
-                  </button>
+                  <Button variant="primary" size="sm">Filter</Button>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <Card>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-1">Total Days</p>
-                    <p className="text-2xl font-bold text-primary-600">{scheduleData.statistics.totalDays}</p>
-                  </div>
-                </Card>
-                <Card>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-1">Present</p>
-                    <p className="text-2xl font-bold text-green-600">{scheduleData.statistics.presentDays}</p>
-                  </div>
-                </Card>
-                <Card>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-1">Late</p>
-                    <p className="text-2xl font-bold text-yellow-600">{scheduleData.statistics.lateDays}</p>
-                  </div>
-                </Card>
-                <Card>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-1">Absent</p>
-                    <p className="text-2xl font-bold text-red-600">{scheduleData.statistics.absentDays}</p>
-                  </div>
-                </Card>
-              </div>
-
-              <Card title="Recent Attendance">
-                <div className="space-y-2">
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <h4 className="heading-card">Recent attendance</h4>
+                </div>
+                <div className="divide-y divide-gray-200">
                   {scheduleData.attendance.map((record, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                          <span className="text-primary-600 font-bold">📅</span>
+                    <div
+                      key={index}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 min-h-[44px]"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                          <span className="text-primary font-semibold" aria-hidden>📅</span>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{new Date(record.date).toLocaleDateString()}</p>
-                          <p className="text-sm text-gray-600">{record.checkIn} - {record.checkOut} • {record.classes} classes</p>
-                          <p className="text-xs text-gray-500">{record.notes}</p>
+                        <div className="min-w-0">
+                          <p className="body-text font-medium text-gray-900">{new Date(record.date).toLocaleDateString()}</p>
+                          <p className="caption text-gray-600">{record.checkIn} – {record.checkOut} · {record.classes} classes</p>
+                          {record.notes && <p className="caption text-gray-500 mt-0.5">{record.notes}</p>}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(record.status)}`}>
-                          {record.status}
-                        </span>
-                      </div>
+                      <span className={`inline-flex px-2.5 py-1 text-sm font-medium rounded-full border shrink-0 ${getStatusColor(record.status)}`}>
+                        {record.status === 'late' ? 'Late' : record.status.replace('_', ' ')}
+                      </span>
                     </div>
                   ))}
                 </div>
-              </Card>
+              </div>
             </div>
           )}
 
           {activeTab === 'leaves' && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">Leave Management</h3>
-                <button className="px-3 py-1 bg-primary-600 text-white text-sm rounded hover:bg-primary-700 transition">
-                  + Request Leave
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="heading-section">Leave</h3>
+                <Button variant="primary" size="sm">+ Request leave</Button>
               </div>
-
               <div className="space-y-4">
                 {scheduleData.leaves.map((leave) => (
-                  <Card key={leave.id}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gold-100 rounded-lg flex items-center justify-center">
-                          <span className="text-2xl">{getLeaveTypeIcon(leave.type)}</span>
+                  <div key={leave.id} className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center shrink-0 text-lg" aria-hidden>
+                          {getLeaveTypeIcon(leave.type)}
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">{leave.type}</h4>
-                          <p className="text-sm text-gray-600">
-                            {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
+                        <div className="min-w-0">
+                          <h4 className="heading-card">{leave.type}</h4>
+                          <p className="body-text text-gray-600 mt-0.5">
+                            {new Date(leave.startDate).toLocaleDateString()} – {new Date(leave.endDate).toLocaleDateString()}
                           </p>
-                          <p className="text-xs text-gray-500">{leave.reason}</p>
+                          <p className="caption text-gray-500 mt-0.5">{leave.reason}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${getLeaveStatusColor(leave.status)}`}>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`px-2.5 py-1 text-sm font-medium rounded-full border ${getLeaveStatusColor(leave.status)}`}>
                           {leave.status}
                         </span>
-                        <div className="mt-2 flex space-x-2">
-                          <button className="text-primary-600 hover:text-primary-800 text-sm">View</button>
-                          <button className="text-gray-600 hover:text-gray-800 text-sm">Edit</button>
-                        </div>
+                        <Button variant="ghost" size="sm">View</Button>
+                        <Button variant="outline" size="sm">Edit</Button>
                       </div>
                     </div>
-                  </Card>
+                  </div>
                 ))}
               </div>
             </div>
@@ -307,76 +266,53 @@ const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ teacher, onClose 
 
           {activeTab === 'statistics' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900">Attendance Statistics</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card title="Attendance Overview">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Overall Attendance Rate</span>
-                      <span className="font-semibold text-green-600">{scheduleData.statistics.attendanceRate}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div 
-                        className="bg-green-500 h-3 rounded-full transition-all duration-300" 
-                        style={{ width: `${scheduleData.statistics.attendanceRate}%` }}
-                      ></div>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Punctuality Rate</span>
-                      <span className="font-semibold text-blue-600">{scheduleData.statistics.punctualityRate}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div 
-                        className="bg-blue-500 h-3 rounded-full transition-all duration-300" 
-                        style={{ width: `${scheduleData.statistics.punctualityRate}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </Card>
-
-                <Card title="Monthly Summary">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Working Days</span>
-                      <span className="font-semibold text-gray-900">{scheduleData.statistics.totalDays}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Present Days</span>
-                      <span className="font-semibold text-green-600">{scheduleData.statistics.presentDays}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Late Days</span>
-                      <span className="font-semibold text-yellow-600">{scheduleData.statistics.lateDays}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Absent Days</span>
-                      <span className="font-semibold text-red-600">{scheduleData.statistics.absentDays}</span>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-
-              <Card title="Export Options">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-center">
-                    <div className="text-2xl mb-2">📊</div>
-                    <p className="font-medium text-gray-900">Excel Report</p>
-                    <p className="text-sm text-gray-600">Detailed attendance data</p>
-                  </button>
-                  <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-center">
-                    <div className="text-2xl mb-2">📄</div>
-                    <p className="font-medium text-gray-900">PDF Report</p>
-                    <p className="text-sm text-gray-600">Formatted attendance report</p>
-                  </button>
-                  <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-center">
-                    <div className="text-2xl mb-2">📧</div>
-                    <p className="font-medium text-gray-900">Email Report</p>
-                    <p className="text-sm text-gray-600">Send to teacher</p>
-                  </button>
+              <h3 className="heading-section">Summary</h3>
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <h4 className="heading-card">This period</h4>
                 </div>
-              </Card>
+                <div className="p-4 sm:p-5 space-y-4">
+                  <div className="flex justify-between items-center body-text text-gray-700">
+                    <span>Working days</span>
+                    <span className="font-medium text-gray-900">{scheduleData.statistics.totalDays}</span>
+                  </div>
+                  <div className="flex justify-between items-center body-text text-gray-700">
+                    <span>Present</span>
+                    <span className="font-medium text-gray-900">{scheduleData.statistics.presentDays}</span>
+                  </div>
+                  <div className="flex justify-between items-center body-text text-gray-700">
+                    <span>Late</span>
+                    <span className="font-medium text-gray-900">{scheduleData.statistics.lateDays}</span>
+                  </div>
+                  <div className="flex justify-between items-center body-text text-gray-700">
+                    <span>Absent</span>
+                    <span className="font-medium text-gray-900">{scheduleData.statistics.absentDays}</span>
+                  </div>
+                  <div className="pt-3 border-t border-gray-200 flex justify-between items-center">
+                    <span className="body-text text-gray-700">Attendance rate</span>
+                    <span className="body-text font-medium text-gray-900">{scheduleData.statistics.attendanceRate}%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <h4 className="heading-card">Export</h4>
+                </div>
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Button variant="outline" size="md" className="flex flex-col items-center gap-1 py-4 min-h-[72px]">
+                    <span aria-hidden>📊</span>
+                    <span>Excel</span>
+                  </Button>
+                  <Button variant="outline" size="md" className="flex flex-col items-center gap-1 py-4 min-h-[72px]">
+                    <span aria-hidden>📄</span>
+                    <span>PDF</span>
+                  </Button>
+                  <Button variant="outline" size="md" className="flex flex-col items-center gap-1 py-4 min-h-[72px]">
+                    <span aria-hidden>📧</span>
+                    <span>Email</span>
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -384,66 +320,58 @@ const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ teacher, onClose 
 
       {/* Mark Attendance Modal */}
       {showMarkAttendance && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Mark Attendance</h3>
-            
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg border border-gray-200 max-w-md w-full p-6">
+            <h3 className="heading-card mb-2">Mark present</h3>
+            <p className="caption text-gray-600 mb-4">Record attendance for this date</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                <label className="block body-text font-medium text-gray-700 mb-2">Date</label>
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                <label className="block body-text font-medium text-gray-700 mb-2">Status</label>
+                <select className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary">
                   <option value="present">Present</option>
                   <option value="late">Late</option>
-                  <option value="absent">Absent</option>
-                  <option value="half-day">Half Day</option>
+                  <option value="absent">Absent today</option>
+                  <option value="half-day">Half day</option>
                 </select>
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Check-in Time</label>
+                <label className="block body-text font-medium text-gray-700 mb-2">Check-in time</label>
                 <input
                   type="time"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Check-out Time</label>
+                <label className="block body-text font-medium text-gray-700 mb-2">Check-out time</label>
                 <input
                   type="time"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                <label className="block body-text font-medium text-gray-700 mb-2">Notes</label>
                 <textarea
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-                  placeholder="Any additional notes..."
-                ></textarea>
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none min-h-[80px]"
+                  placeholder="Any notes..."
+                />
               </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => setShowMarkAttendance(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                >
+              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+                <Button variant="outline" size="md" onClick={() => setShowMarkAttendance(false)} className="sm:ml-auto">
                   Cancel
-                </button>
-                <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                  Mark Attendance
-                </button>
+                </Button>
+                <Button variant="primary" size="md">
+                  Mark present
+                </Button>
               </div>
             </div>
           </div>

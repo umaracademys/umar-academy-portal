@@ -4,6 +4,8 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import { useToast } from '../hooks/useToast';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import AppLayout from '../components/layout/AppLayout';
+import Button from '../components/ui/Button';
 import { TeacherAttendance } from '../types';
 
 const TeacherAttendanceView: React.FC = () => {
@@ -17,6 +19,7 @@ const TeacherAttendanceView: React.FC = () => {
   const [attendanceRecords, setAttendanceRecords] = useState<TeacherAttendance[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [teacherId, setTeacherId] = useState<string>('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
@@ -167,118 +170,115 @@ const TeacherAttendanceView: React.FC = () => {
   if (user?.role !== 'teacher') {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-6">
-            <div className="max-w-4xl mx-auto">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800">Access denied. Teacher access only.</p>
-              </div>
-            </div>
-          </main>
-        </div>
+        <Header onMenuClick={() => setSidebarOpen((o) => !o)} />
+        <AppLayout
+          sidebar={
+            <Sidebar
+              activeSection="my-attendance"
+              onSectionChange={() => {}}
+              isMobileOpen={sidebarOpen}
+              onMobileToggle={() => setSidebarOpen((o) => !o)}
+              onMobileClose={() => setSidebarOpen(false)}
+            />
+          }
+          sidebarOpen={sidebarOpen}
+          onOverlayClick={() => setSidebarOpen(false)}
+          maxWidth="7xl"
+        >
+          <div className="p-4">
+            <p className="body-text font-medium text-red-600">Access denied. Teacher access only.</p>
+          </div>
+        </AppLayout>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">My Attendance</h1>
-              <p className="text-gray-600">View your attendance records shared by admin</p>
+      <Header onMenuClick={() => setSidebarOpen((o) => !o)} />
+      <AppLayout
+        sidebar={
+          <Sidebar
+            activeSection="my-attendance"
+            onSectionChange={() => {}}
+            isMobileOpen={sidebarOpen}
+            onMobileToggle={() => setSidebarOpen((o) => !o)}
+            onMobileClose={() => setSidebarOpen(false)}
+          />
+        }
+        sidebarOpen={sidebarOpen}
+        onOverlayClick={() => setSidebarOpen(false)}
+        maxWidth="7xl"
+      >
+      <section className="space-y-4">
+        <div>
+          <h1 className="heading-page text-gray-900">My attendance</h1>
+          <p className="caption mt-1">
+            View records shared with you by admin
+          </p>
+        </div>
+
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
+          <h2 className="heading-card mb-3">Choose date or range</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block body-text font-medium text-gray-700 mb-1">Date</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-1 focus:ring-primary focus:border-primary"
+              />
             </div>
-
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm text-gray-600 mb-1">Total Shifts</div>
-                <div className="text-2xl font-bold text-gray-900">{stats.totalShifts}</div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm text-gray-600 mb-1">Present</div>
-                <div className="text-2xl font-bold text-green-600">{stats.present}</div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm text-gray-600 mb-1">Absent</div>
-                <div className="text-2xl font-bold text-red-600">{stats.absent}</div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="text-sm text-gray-600 mb-1">Present Rate</div>
-                <div className="text-2xl font-bold text-blue-600">{stats.presentRate}%</div>
-              </div>
+            <div>
+              <label className="block body-text font-medium text-gray-700 mb-1">From (range)</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-1 focus:ring-primary focus:border-primary"
+              />
             </div>
-
-            {/* Filters */}
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date (Range)</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date (Range)</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <button
-                  onClick={fetchAttendance}
-                  disabled={isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isLoading ? 'Loading...' : 'Refresh'}
-                </button>
-              </div>
+            <div>
+              <label className="block body-text font-medium text-gray-700 mb-1">To (range)</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2 border border-gray-200 rounded-lg body-text focus:ring-1 focus:ring-primary focus:border-primary"
+              />
             </div>
+          </div>
+          <div className="mt-4">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={fetchAttendance}
+              disabled={isLoading}
+              fullWidthMobile
+              className="min-h-[44px]"
+            >
+              {isLoading ? 'Loading...' : 'Refresh'}
+            </Button>
+          </div>
+        </div>
 
-            {/* Attendance Records */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Attendance Records ({attendanceRecords.length})
-                </h2>
-              </div>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100">
+            <h2 className="heading-section">Records ({attendanceRecords.length})</h2>
+          </div>
 
-              {isLoading ? (
-                <div className="p-8 text-center">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <p className="mt-2 text-gray-600">Loading attendance records...</p>
-                </div>
-              ) : attendanceRecords.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <p>No shared attendance records found.</p>
-                  <p className="text-sm mt-2">Admin will share your attendance records with you.</p>
-                </div>
-              ) : (
+          {isLoading ? (
+            <div className="p-8 text-center">
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+              <p className="body-text text-gray-600 mt-3">Loading...</p>
+            </div>
+          ) : attendanceRecords.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="body-text text-gray-900">No records yet</p>
+              <p className="caption mt-1">Admin will share your attendance with you when it’s ready.</p>
+            </div>
+          ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -362,10 +362,9 @@ const TeacherAttendanceView: React.FC = () => {
                   </table>
                 </div>
               )}
-            </div>
-          </div>
-        </main>
-      </div>
+        </div>
+      </section>
+      </AppLayout>
     </div>
   );
 };

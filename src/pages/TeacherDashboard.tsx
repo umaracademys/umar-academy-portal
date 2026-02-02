@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
-import StatCard from '../components/StatCard';
-import Card from '../components/Card';
-import Button from '../components/Button';
+import Sidebar from '../components/Sidebar';
+import AppLayout from '../components/layout/AppLayout';
+import Card, { CardHeader, CardContent } from '../components/ui/Card';
+import Button from '../components/ui/Button';
 // DebugPanel only in development
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const DebugPanel = isDevelopment ? lazy(() => import('../components/DebugPanel')) : null;
@@ -575,112 +576,63 @@ const TeacherDashboard: React.FC = () => {
     return groups;
   }, [activityHistory]);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <Header onNotificationClick={() => setShowNotificationCenter(true)} />
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-      <div className="mx-auto max-w-7xl px-2 py-2 sm:px-3 lg:px-4">
-        {/* Ultra-Compact Header */}
-        <div className="mb-2 bg-white rounded-lg border border-gray-200 px-2 py-1.5 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5">
-            <div>
-              <h1 className="text-base font-bold text-gray-900">Teacher Dashboard</h1>
-              <p className="text-[10px] text-gray-600 mt-0.5">
-                {currentTeacher?.fullName || 'Teacher'}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <RequirePermission permission="canAccessAssignments">
-              <Link
-                to="/assignments"
-                className="px-2.5 py-1.5 bg-primary text-white rounded text-xs font-medium hover:bg-primary/90 transition-colors"
-              >
-                Assignments
-              </Link>
-              </RequirePermission>
-              <RequirePermission permission="canViewReports">
-              <button
-                onClick={() => setShowStudentReports(true)}
-                className="px-2.5 py-1.5 border border-primary text-primary rounded text-xs font-medium hover:bg-primary/10 transition-colors"
-              >
-                Reports
-              </button>
-              </RequirePermission>
-              <Link
-                to="/profile"
-                className="px-2.5 py-1.5 border border-gray-300 text-gray-700 rounded text-xs font-medium hover:bg-gray-50 transition-colors"
-              >
-                Profile
-              </Link>
-            </div>
-          </div>
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header onMenuClick={() => setSidebarOpen((o) => !o)} onNotificationClick={() => setShowNotificationCenter(true)} />
+      <AppLayout
+        sidebar={
+          <Sidebar
+            activeSection="overview"
+            onSectionChange={() => {}}
+            isMobileOpen={sidebarOpen}
+            onMobileToggle={() => setSidebarOpen((o) => !o)}
+            onMobileClose={() => setSidebarOpen(false)}
+          />
+        }
+        sidebarOpen={sidebarOpen}
+        onOverlayClick={() => setSidebarOpen(false)}
+        maxWidth="7xl"
+      >
+      <div className="space-y-4">
+        <div>
+          <h1 className="heading-page text-gray-900">Dashboard</h1>
+          <p className="caption mt-1">
+            {currentTeacher?.fullName || 'Teacher'}
+            {pairPartner && ` · Paired with ${pairPartner.fullName}`}
+            {currentTeacher && ` · ${allPairStudents.length} students · ${filteredAndSortedTickets.length} pending tickets`}
+          </p>
         </div>
 
-        {/* Compact Success/Error Messages */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <RequirePermission permission="canAccessAssignments">
+            <Link to="/assignments">
+              <Button variant="primary" size="md" fullWidthMobile>Assignments</Button>
+            </Link>
+          </RequirePermission>
+          <RequirePermission permission="canViewReports">
+            <Button variant="outline" size="md" onClick={() => setShowStudentReports(true)}>Reports</Button>
+          </RequirePermission>
+          <Link to="/profile">
+            <Button variant="outline" size="md" fullWidthMobile>Profile</Button>
+          </Link>
+        </div>
+
         {saveSuccess && (
-          <div className="mb-3 bg-green-50 border border-green-200 rounded px-3 py-2">
-            <p className="text-xs font-medium text-green-800">{saveSuccess}</p>
+          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+            <p className="body-text font-medium text-green-800">{saveSuccess}</p>
           </div>
         )}
         {saveError && (
-          <div className="mb-3 bg-red-50 border border-red-200 rounded px-3 py-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-red-800">{saveError}</p>
-              <Button
-                onClick={() => setSaveError(null)}
-                variant="ghost"
-                size="sm"
-                className="text-xs text-red-600 hover:text-red-800 min-h-auto p-1"
-              >
-                ×
-              </Button>
-            </div>
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between gap-2">
+            <p className="body-text font-medium text-red-800">{saveError}</p>
+            <Button variant="ghost" size="sm" onClick={() => setSaveError(null)} className="min-h-[44px] shrink-0">×</Button>
           </div>
         )}
 
-        {/* Compact Pair Teacher Info */}
-        {pairPartner && (
-          <div className="mb-3 bg-white rounded-lg border border-gray-200 px-3 py-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-gray-700">Paired with:</span>
-                <span className="text-xs font-semibold text-primary">{pairPartner.fullName}</span>
-              </div>
-              <span className="text-xs text-gray-600">{allPairStudents.length} students</span>
-            </div>
-          </div>
-        )}
-
-        {/* Ultra-Compact Statistics Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
-          <StatCard 
-            title="Pair Students" 
-            value={currentTeacher ? allPairStudents.length : 0} 
-            icon="AS"
-            onClick={() => setActiveTab('overview')}
-          />
-          <StatCard 
-            title="Total Assessments" 
-            value={currentTeacher ? allPairStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0) : 0} 
-            icon="TA"
-            onClick={() => setActiveTab('actions')}
-          />
-          <StatCard 
-            title="Active Students" 
-            value={currentTeacher ? allPairStudents.filter(s => s.status === 'active').length : 0} 
-            icon="WK"
-            onClick={() => setActiveTab('overview')}
-          />
-          <StatCard 
-            title="Pending Tickets" 
-            value={filteredAndSortedTickets.length} 
-            icon="PT"
-            onClick={() => setActiveTab('tickets')}
-          />
-        </div>
-
-        {/* Ultra-Compact Tab Navigation */}
-        <div className="mb-2 flex items-center gap-0.5 border-b border-gray-200 bg-white rounded-t-lg px-1.5 pt-0.5 overflow-x-auto">
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-1 border-b border-gray-200 bg-white rounded-t-lg overflow-x-auto">
           <button
             onClick={() => setActiveTab('overview')}
             className={`px-2 py-1 text-[11px] font-medium transition-all relative rounded-t whitespace-nowrap ${
@@ -752,9 +704,11 @@ const TeacherDashboard: React.FC = () => {
         {activeTab === 'overview' && (
           <div className="space-y-2">
             {/* Quick Stats Summary */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-              <Card title="Quick Actions" className="lg:col-span-1">
-                <div className="space-y-1.5">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card className="lg:col-span-1" padding="md">
+                <CardHeader><h3 className="heading-card">Quick Actions</h3></CardHeader>
+                <CardContent>
+                <div className="space-y-3">
                   <RequirePermission 
                     permission="canCreateTickets" 
                     tooltipMessage="Permission required: Create Tickets - Contact admin to request access"
@@ -809,11 +763,13 @@ const TeacherDashboard: React.FC = () => {
                     </div>
                   </button>
                 </div>
+                </CardContent>
               </Card>
-              
-              {/* Recent Activity Preview - Compact */}
-              <Card title="Recent Activity" className="lg:col-span-2">
-                <div className="space-y-1.5">
+
+              <Card className="lg:col-span-2" padding="md">
+                <CardHeader><h3 className="heading-card">Recent Activity</h3></CardHeader>
+                <CardContent>
+                <div className="space-y-3">
                   {filteredAndSortedTickets.slice(0, 3).map((ticket) => (
                     <div
                       key={ticket.id}
@@ -872,6 +828,7 @@ const TeacherDashboard: React.FC = () => {
                     </button>
                   )}
                 </div>
+                </CardContent>
               </Card>
             </div>
           </div>
@@ -908,8 +865,10 @@ const TeacherDashboard: React.FC = () => {
                 </div>
               </div>
             </Card>
-            {/* Pending Tickets - Compact */}
-            <Card title={`Pending Tickets (${filteredAndSortedTickets.length})`}>
+            {/* Pending Tickets */}
+            <Card padding="md">
+              <CardHeader><h3 className="heading-card">Pending Tickets ({filteredAndSortedTickets.length})</h3></CardHeader>
+              <CardContent>
               {filteredAndSortedTickets.length > 0 && (
                 <div className="mb-3 flex items-center justify-between gap-2 pb-3 border-b border-gray-200">
                   <div className="flex items-center gap-2">
@@ -1138,12 +1097,14 @@ const TeacherDashboard: React.FC = () => {
                   )}
                 </div>
               )}
+              </CardContent>
             </Card>
 
-            {/* All Approved Tickets - Compact */}
             {allApprovedTickets.length > 0 && (
-              <Card title={`Approved Tickets (${allApprovedTickets.length})`}>
-                <div className="space-y-1.5">
+              <Card padding="md">
+                <CardHeader><h3 className="heading-card">Approved Tickets ({allApprovedTickets.length})</h3></CardHeader>
+                <CardContent>
+                <div className="space-y-3">
                   {(showAllApprovedTickets ? allApprovedTickets : allApprovedTickets.slice(0, 5)).map((ticket) => {
                     const assignment = ticket.sentToAssignmentId ? assignments.find(a => {
                       const aId = (a as any)._id || a.id;
@@ -1208,12 +1169,14 @@ const TeacherDashboard: React.FC = () => {
                     </button>
                   )}
                 </div>
+                </CardContent>
               </Card>
             )}
 
-            {/* Approved Tickets Needing Homework */}
             {approvedTicketsNeedingHomework.length > 0 && (
-              <Card title={`Approved Tickets - Assign Homework (${approvedTicketsNeedingHomework.length})`}>
+              <Card padding="md">
+                <CardHeader><h3 className="heading-card">Approved Tickets - Assign Homework ({approvedTicketsNeedingHomework.length})</h3></CardHeader>
+                <CardContent>
                 <div className="space-y-3">
                   {(showAllApprovedTickets ? approvedTicketsNeedingHomework : approvedTicketsNeedingHomework.slice(0, 3)).map((ticket) => {
                     const handleAssignHomework = async () => {
@@ -1312,6 +1275,7 @@ const TeacherDashboard: React.FC = () => {
                     </button>
                   )}
                 </div>
+                </CardContent>
               </Card>
             )}
           </div>
@@ -1349,8 +1313,9 @@ const TeacherDashboard: React.FC = () => {
               </div>
             </Card>
 
-            {/* Students List */}
-            <Card title={`My Students (${filteredAndSortedStudents.length})`}>
+            <Card padding="md">
+              <CardHeader><h3 className="heading-card">My Students ({filteredAndSortedStudents.length})</h3></CardHeader>
+              <CardContent>
               {filteredAndSortedStudents.length > 0 ? (
                 <div className="space-y-3">
                   {filteredAndSortedStudents.map((student) => {
@@ -1522,14 +1487,17 @@ const TeacherDashboard: React.FC = () => {
                   </p>
                 </div>
               )}
+              </CardContent>
             </Card>
           </div>
         )}
 
         {activeTab === 'actions' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card title="Quick Actions">
-              <div className="space-y-2">
+            <Card padding="md">
+              <CardHeader><h3 className="heading-card">Quick Actions</h3></CardHeader>
+              <CardContent>
+              <div className="space-y-3">
                 <button
                   onClick={() => setShowEvaluationAssignments(true)}
                   className="group w-full text-left px-4 py-3 rounded-lg border border-slate-700/50 bg-gradient-to-r from-slate-800/50 to-slate-900/50 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-lg hover:shadow-xl"
@@ -1643,15 +1611,17 @@ const TeacherDashboard: React.FC = () => {
                   </div>
                 </Link>
               </div>
+              </CardContent>
             </Card>
           </div>
         )}
 
-        {/* Teacher Pairs Section - Compact */}
         {teacherPairs.length > 0 && (
           <div className="mb-4">
-            <Card title={`My Teacher Pairs (${teacherPairs.length})`}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <Card padding="md">
+              <CardHeader><h3 className="heading-card">My Teacher Pairs ({teacherPairs.length})</h3></CardHeader>
+              <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {teacherPairs.map((pair) => {
                   const pairStudents = pairStudentsMap[pair._id] || [];
                   const otherTeacher = pair.teacher1?._id?.toString() === ((currentTeacher as any)?._id || (currentTeacher as any)?.teacherDocumentId || currentTeacher?.id)?.toString()
@@ -1709,13 +1679,15 @@ const TeacherDashboard: React.FC = () => {
                   );
                 })}
               </div>
+              </CardContent>
             </Card>
           </div>
         )}
 
-        {/* Assigned Students List - Ultra Compact */}
         <div className="mb-4">
-          <Card title={`Assigned Students (${allPairStudents.length})`}>
+          <Card padding="md">
+              <CardHeader><h3 className="heading-card">Assigned Students ({allPairStudents.length})</h3></CardHeader>
+              <CardContent>
             {allPairStudents.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
@@ -1923,6 +1895,7 @@ const TeacherDashboard: React.FC = () => {
                 })}
               </div>
             )}
+              </CardContent>
           </Card>
         </div>
 
@@ -2383,6 +2356,7 @@ const TeacherDashboard: React.FC = () => {
         </div>
       )}
 
+      </AppLayout>
     </div>
   );
 };
