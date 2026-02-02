@@ -3373,7 +3373,7 @@ app.get('/api/students', combinedListEndpointLimiter, authenticateToken, require
     
     // Filter PII from student data (no need for .toObject() since .lean() returns plain objects)
     const filteredStudents = students.map(student => {
-      const studentObj = { ...student }; // Shallow copy since already plain object
+      const studentObj = { ...student, id: student._id }; // Ensure id for frontend
       
       if (!canViewEmail) {
         delete studentObj.email;

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Card from './Card';
 import LoginHistory from './LoginHistory';
 import { useToast } from '../hooks/useToast';
+import { useAuth } from '../contexts/AuthContext';
 
 interface StudentCredentialsProps {
   student: any;
@@ -46,6 +47,7 @@ const getAuthHeaders = () => {
 
 const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClose }) => {
   const { showToast } = useToast();
+  const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
@@ -119,16 +121,18 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
       }
     }
 
-    // Method 4: Try to find User by email (as fallback)
+    // Method 4: Try to find User by email (as fallback) — teachers cannot call /api/users
     const userEmail = getUserEmail();
-    if (!userId && userEmail) {
+    const isAdminOrSuperadmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+    if (!userId && userEmail && isAdminOrSuperadmin) {
       try {
         const usersResponse = await fetch(`${API_BASE}/users`, {
           headers: getAuthHeaders()
         });
         if (usersResponse.ok) {
           const users = await usersResponse.json();
-          const user = users.find((u: any) => u.email === userEmail);
+          const user = Array.isArray(users) ? users.find((u: any) => u.email === userEmail)
+            : (users?.users || []).find((u: any) => u.email === userEmail);
           if (user) {
             userId = user._id || user.id;
             if (import.meta.env.DEV) {
@@ -173,7 +177,7 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
           if (response.status === 403) {
             throw new Error('Access denied. Admin privileges required to view user details.');
           } else if (response.status === 404) {
-            // User account doesn't exist - this is valid, show informational message
+            // User doesn't exist (deleted or never had account)
             setHasNoUserAccount(true);
             setError(null);
             setLoading(false);
