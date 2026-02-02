@@ -588,6 +588,29 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Phase 1 audit hardening: access helpers (no schema changes)
+const requireAdminOrSuperadmin = (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+  const role = (req.user.role || '').toLowerCase();
+  if (role === 'admin' || role === 'superadmin') return next();
+  return res.status(403).json({ error: 'Access denied. Admin or Super Admin only.' });
+};
+const requireUsersListAccess = (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+  if ((req.user.role || '').toLowerCase() === 'student') return res.status(403).json({ error: 'Access denied. Students cannot list users.' });
+  const role = (req.user.role || '').toLowerCase();
+  if (role === 'admin' || role === 'superadmin') return next();
+  const hasPerm = req.user.permissions && (req.user.permissions['*'] === true || req.user.permissions.canManageTeachers === true);
+  if (hasPerm) return next();
+  return res.status(403).json({ error: 'Access denied. Admin/Super Admin or canManageTeachers required.' });
+};
+function parseListPagination(req, defaultLimit = 50, maxLimit = 200) {
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(maxLimit, Math.max(1, parseInt(req.query.limit, 10) || defaultLimit));
+  const skip = (page - 1) * limit;
+  return { page, limit, skip };
+}
+
 // Audio upload route - must be before json middleware to handle binary data
 // SECURITY FIX: Add authentication and file validation
 app.post('/api/mistakes/audio', authenticateToken, (req, res) => {
@@ -3173,29 +3196,33 @@ app.get('/api/activity-logs/stats', apiLimiter, authenticateToken, async (req, r
   }
 });
 
-// Get all users (optional auth - for backward compatibility, but passwords are always excluded)
-// No rate limiting for this endpoint (it's called frequently during app initialization)
-app.get('/api/users', combinedListEndpointLimiter, authenticateToken, async (req, res) => {
+// Get all users - Phase 1: restricted to admin/superadmin or canManageTeachers; students never; pagination
+app.get('/api/users', combinedListEndpointLimiter, authenticateToken, requireUsersListAccess, async (req, res) => {
   try {
-    // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
       console.error('❌ MongoDB not connected. ReadyState:', mongoose.connection.readyState);
-      return res.status(503).json({ 
+      return res.status(503).json({
         error: 'Database connection unavailable. Please try again in a moment.',
         details: 'MongoDB connection is not established'
       });
     }
 
-    const users = await User.find({}).select('-password').lean(); // Always exclude passwords
-    
-    // Add password status information
+    const { page, limit, skip } = parseListPagination(req, 50, 200);
+    const [users, total] = await Promise.all([
+      User.find({}).select('-password').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      User.countDocuments({})
+    ]);
+
     const usersWithPasswordStatus = users.map(user => ({
       ...user,
       passwordChangeRequired: user.passwordChangeRequired || false,
       hasPassword: !!user.password
     }));
-    
-    res.json(usersWithPasswordStatus);
+
+    res.json({
+      users: usersWithPasswordStatus,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
   } catch (error) {
     console.error('❌ Error fetching users:', error);
     res.status(500).json({ error: error.message });
@@ -3282,10 +3309,16 @@ app.get('/api/users/locked', authenticateToken, async (req, res) => {
   }
 });
 
-// Get a single user by ID (no password)
+// Get a single user by ID (no password) - Phase 1: self or admin/superadmin only
 app.get('/api/users/:id', apiLimiter, authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const targetId = req.params.id;
+    const isSelf = req.user.userId && req.user.userId.toString() === targetId;
+    const isAdminOrSuper = (req.user.role || '').toLowerCase() === 'admin' || (req.user.role || '').toLowerCase() === 'superadmin';
+    if (!isSelf && !isAdminOrSuper) {
+      return res.status(403).json({ error: 'Access denied. You can only view your own profile.' });
+    }
+    const user = await User.findById(targetId).select('-password');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -3298,16 +3331,21 @@ app.get('/api/users/:id', apiLimiter, authenticateToken, async (req, res) => {
   }
 });
 
-// Get all students
-// Phase 7: CRITICAL - Filter PII based on permissions
-app.get('/api/students', combinedListEndpointLimiter, authenticateToken, async (req, res) => {
+// Get all students - Phase 1: require canManageStudents; pagination
+app.get('/api/students', combinedListEndpointLimiter, authenticateToken, requirePermission('canManageStudents'), async (req, res) => {
   try {
-    // OPTIMIZED: Use .lean() for 40-60% performance improvement
-    const students = await Student.find({})
-      .populate('userId', 'email name') // Select only needed fields
-      .sort({ program: 1, fullName: 1 }) // Sort by program first, then A-Z by name
-      .lean(); // Plain objects, much faster than Mongoose documents
-    
+    const { page, limit, skip } = parseListPagination(req, 50, 200);
+    const [studentsRaw, total] = await Promise.all([
+      Student.find({})
+        .populate('userId', 'email name')
+        .sort({ program: 1, fullName: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Student.countDocuments({})
+    ]);
+    const students = studentsRaw;
+
     // Phase 7: CRITICAL - Filter PII based on permissions
     const canViewEmail = req.user.role === 'superadmin' || 
                         (req.user.permissions && req.user.permissions['*'] === true) ||
@@ -3347,8 +3385,11 @@ app.get('/api/students', combinedListEndpointLimiter, authenticateToken, async (
       
       return studentObj;
     });
-    
-    res.json(filteredStudents);
+
+    res.json({
+      students: filteredStudents,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -3601,60 +3642,47 @@ const syncTeacherAssignedStudents = async () => {
   }
 };
 
-// Get all teachers (admin/superadmin with canManageTeachers only)
+// Get all teachers - Phase 1: canManageTeachers + pagination (default 50, max 200)
 app.get('/api/teachers', combinedListEndpointLimiter, authenticateToken, requirePermission('canManageTeachers'), async (req, res) => {
   try {
-    // Sync assignedStudents arrays before returning teachers
     const syncOnLoad = req.query.sync === 'true';
-    
-    // If sync is requested, start it but don't wait for it to complete
-    // This prevents timeout issues on slow databases
     if (syncOnLoad) {
       console.log('🔄 GET /api/teachers called with sync=true, starting async sync...');
-      // Start sync in background - don't await it
       syncTeacherAssignedStudents().catch(err => {
         console.error('❌ Background sync error:', err);
       });
-      // Give sync a small head start, but don't wait for completion
       await new Promise(resolve => setTimeout(resolve, 500));
     }
-    
-    // OPTIMIZED: Use cache for 90% faster repeated requests (5 minute TTL)
-    const { getCached, setCached } = require('./utils/cache');
-    const cacheKey = 'teachers:all';
-    const cachedTeachers = getCached(cacheKey, 5 * 60 * 1000); // 5 minute TTL
-    
-    let teachers;
-    if (cachedTeachers) {
-      teachers = cachedTeachers;
-    } else {
-      // Cache miss - fetch from database
-      teachers = await Teacher.find({})
-        .populate('userId', 'email name') // Select only needed fields
-        .lean();
-      
-      // Cache the result
-      setCached(cacheKey, teachers);
-    }
-    
-    // Convert to plain objects and ensure assignedStudents is always an array
-    // IMPORTANT: Keep _id as ObjectId or string - don't lose it
-    const teachersWithArrays = teachers.map(teacher => ({
+
+    const { page, limit, skip } = parseListPagination(req, 50, 200);
+    const [teachersRaw, total] = await Promise.all([
+      Teacher.find({})
+        .populate('userId', 'email name')
+        .sort({ fullName: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Teacher.countDocuments({})
+    ]);
+
+    const teachersWithArrays = teachersRaw.map(teacher => ({
       ...teacher,
       assignedStudents: Array.isArray(teacher.assignedStudents) ? teacher.assignedStudents : [],
-      _id: teacher._id?.toString() || teacher._id, // Ensure _id is always included as string
-      id: teacher._id?.toString() || teacher._id // Also include as 'id' for compatibility
+      _id: teacher._id?.toString() || teacher._id,
+      id: teacher._id?.toString() || teacher._id
     }));
-    
-    // Log assignedStudents arrays for debugging (only if not syncing to avoid delay)
+
     if (!syncOnLoad) {
       console.log('📊 Teachers loaded (no sync):');
       teachersWithArrays.forEach(teacher => {
         console.log(`  - ${teacher.fullName} (${teacher._id}): assignedStudents=[${teacher.assignedStudents.join(', ')}] (${teacher.assignedStudents.length} students)`);
       });
     }
-    
-    res.json(teachersWithArrays);
+
+    res.json({
+      teachers: teachersWithArrays,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
   } catch (error) {
     console.error('❌ Error in GET /api/teachers:', error);
     console.error('Stack trace:', error.stack);
@@ -4629,15 +4657,18 @@ const normalizeTeacherData = (teacherData) => {
   return normalized;
 };
 
-// Get all admins
-app.get('/api/admins', combinedListEndpointLimiter, authenticateToken, async (req, res) => {
+// Get all admins - Phase 1: admin/superadmin only; pagination
+app.get('/api/admins', combinedListEndpointLimiter, authenticateToken, requireAdminOrSuperadmin, async (req, res) => {
   try {
-    // OPTIMIZED: Use .lean() for 50% performance improvement
-    const admins = await Admin.find({})
-      .populate('userId', 'email name') // Select only needed fields
-      .lean(); // Plain objects, much faster
-    
-    res.json(admins);
+    const { page, limit, skip } = parseListPagination(req, 50, 200);
+    const [admins, total] = await Promise.all([
+      Admin.find({}).populate('userId', 'email name').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Admin.countDocuments({})
+    ]);
+    res.json({
+      admins,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -5733,16 +5764,23 @@ app.post('/api/teacher-attendance/bulk', authenticateToken, requirePermission('c
   }
 });
 
-// Get attendance records with filters
+// Get attendance records with filters - Phase 1: admins require canManageAttendance
 app.get('/api/teacher-attendance', authenticateToken, async (req, res) => {
   try {
     const { teacherId, date, startDate, endDate, month, year, employmentType } = req.query;
     const user = req.user;
+    const role = (user.role || '').toLowerCase();
+    if (role === 'admin') {
+      const hasManage = user.permissions && (user.permissions['*'] === true || user.permissions.canManageAttendance === true);
+      if (!hasManage) {
+        return res.status(403).json({ error: 'Access denied. canManageAttendance required to view teacher attendance.' });
+      }
+    }
 
     let query = {};
 
     // Teachers can only see their own attendance that has been shared
-    if (user.role === 'teacher') {
+    if (role === 'teacher') {
       const teacher = await Teacher.findOne({
         $or: [
           { userId: user.id || user._id },
@@ -5786,15 +5824,22 @@ app.get('/api/teacher-attendance', authenticateToken, async (req, res) => {
   }
 });
 
-// Get attendance for specific teacher
+// Get attendance for specific teacher - Phase 1: admins require canManageAttendance
 app.get('/api/teacher-attendance/teacher/:teacherId', authenticateToken, validateTeacherOwnership, async (req, res) => {
   try {
     const { teacherId } = req.params;
     const { startDate, endDate, month, year } = req.query;
     const user = req.user;
+    const role = (user.role || '').toLowerCase();
+    if (role === 'admin') {
+      const hasManage = user.permissions && (user.permissions['*'] === true || user.permissions.canManageAttendance === true);
+      if (!hasManage) {
+        return res.status(403).json({ error: 'Access denied. canManageAttendance required.' });
+      }
+    }
 
     // Teachers can only see their own attendance
-    if (user.role === 'teacher') {
+    if (role === 'teacher') {
       const teacher = await findTeacherById(user.id || user._id);
       if (!teacher) {
         return res.status(404).json({ error: 'Teacher profile not found' });
@@ -5829,12 +5874,19 @@ app.get('/api/teacher-attendance/teacher/:teacherId', authenticateToken, validat
   }
 });
 
-// Get attendance statistics for a teacher
+// Get attendance statistics for a teacher - Phase 1: admins require canManageAttendance
 app.get('/api/teacher-attendance/stats/:teacherId', authenticateToken, async (req, res) => {
   try {
     const { teacherId } = req.params;
     const { month, year } = req.query;
     const user = req.user;
+    const role = (user.role || '').toLowerCase();
+    if (role === 'admin') {
+      const hasManage = user.permissions && (user.permissions['*'] === true || user.permissions.canManageAttendance === true);
+      if (!hasManage) {
+        return res.status(403).json({ error: 'Access denied. canManageAttendance required.' });
+      }
+    }
 
     // Resolve teacherId to actual Teacher document _id using helper
     const teacher = await findTeacherById(teacherId);
@@ -5843,7 +5895,7 @@ app.get('/api/teacher-attendance/stats/:teacherId', authenticateToken, async (re
     }
 
     // Teachers can only see their own stats
-    if (user.role === 'teacher') {
+    if (role === 'teacher') {
       const currentUserTeacher = await findTeacherById(user.id || user._id);
       if (!currentUserTeacher || currentUserTeacher._id.toString() !== teacher._id.toString()) {
         return res.status(403).json({ error: 'You can only view your own statistics' });
@@ -6013,7 +6065,7 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     }
 
     // Users can only update their own profile unless they're admin/superadmin
-    const isSelfUpdate = req.user.userId === req.params.id;
+    const isSelfUpdate = req.user.userId && (req.user.userId.toString?.() || req.user.userId) === req.params.id;
     const isAdmin = requestingUser.role === 'superadmin' || requestingUser.role === 'admin';
 
     // Phase 7: CRITICAL - Require canManageTeachers for non-self updates
@@ -6036,11 +6088,18 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     }
 
     // Don't allow updating password or sensitive fields through this endpoint
-    const { password, role, ...updateData } = req.body;
-    
-    // Don't allow users to change their own role
-    if (!isAdmin && req.body.role && req.body.role !== targetUser.role) {
-      return res.status(403).json({ error: 'You cannot change your own role' });
+    const { password, role, email, ...updateData } = req.body;
+    // Phase 1: non-admins may not change role or email (self or others)
+    if (!isAdmin) {
+      if (role !== undefined && role !== targetUser.role) {
+        return res.status(403).json({ error: 'You cannot change role. Admin or canManageTeachers required.' });
+      }
+      if (email !== undefined && (email || '').trim() !== (targetUser.email || '').trim()) {
+        return res.status(403).json({ error: 'You cannot change email. Admin or canManageTeachers required.' });
+      }
+    } else {
+      if (role !== undefined) updateData.role = role;
+      if (email !== undefined) updateData.email = email;
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -6430,21 +6489,17 @@ app.post('/api/users/:id/unlock', authenticateToken, requirePermission('canManag
   }
 });
 
-// Get user details including settings
-// Phase 7: CRITICAL - Protect PII access
-// Allow admins/superadmins to access without specific permission
+// Get user details including settings - Phase 1: self or admin/superadmin only
 app.get('/api/users/:id/details', authenticateToken, async (req, res) => {
   try {
-    const user = req.user;
-    // Check permission unless user is admin/superadmin
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
-      // For non-admins, require the specific permission
-      if (!user.permissions?.canViewStudentPersonalInfo) {
-        return res.status(403).json({ error: 'Access denied. Admin privileges required to view user details.' });
-      }
+    const targetId = req.params.id;
+    const isSelf = req.user.userId && req.user.userId.toString() === targetId;
+    const isAdminOrSuper = (req.user.role || '').toLowerCase() === 'admin' || (req.user.role || '').toLowerCase() === 'superadmin';
+    if (!isSelf && !isAdminOrSuper) {
+      return res.status(403).json({ error: 'Access denied. You can only view your own details.' });
     }
-    
-    const targetUser = await User.findById(req.params.id);
+
+    const targetUser = await User.findById(targetId);
     if (!targetUser) {
       return res.status(404).json({ error: 'User not found. The student may not have a linked User account.' });
     }
@@ -7486,6 +7541,18 @@ const findListeningSessionByParam = async (param) => {
     }
   }
   return ListeningSession.findOne({ ticketId: param, status: 'in_progress' });
+};
+
+// Phase 1: listening session access - teachers own sessions (teacherId or userId), admins/superadmins all
+const checkListeningSessionAccess = async (req, session) => {
+  if (!req.user || !session) return false;
+  const role = (req.user.role || '').toLowerCase();
+  if (role === 'admin' || role === 'superadmin') return true;
+  const teacher = await getTeacherByUserId(req.user.userId);
+  if (!teacher) return false;
+  const teacherIdStr = teacher._id.toString();
+  const userIdStr = req.user.userId && req.user.userId.toString();
+  return session.teacherId === teacherIdStr || session.teacherId === userIdStr;
 };
 
 const enforceMistakeHistoryLimit = (session, limit = 50) => {
@@ -8651,9 +8718,8 @@ app.get('/api/tickets/:id/verify-assignment', authenticateToken, async (req, res
 });
 
 // Fix tickets that are missing sentToAssignmentId - MUST come before /:id route
-// Bulk delete tickets - MUST be before /api/tickets/:id route (to avoid route conflict)
-// ✅ FIX: Allow teachers to bulk delete tickets they have access to (assigned to them or for their students)
-app.post('/api/tickets/bulk-delete', authenticateToken, async (req, res) => {
+// Bulk delete tickets - Phase 1: require canManageTicketWorkflow
+app.post('/api/tickets/bulk-delete', authenticateToken, requirePermission('canManageTicketWorkflow'), async (req, res) => {
   try {
     const { ticketIds } = req.body;
     const user = req.user;
@@ -11470,12 +11536,15 @@ app.post('/api/listening-sessions/start', authenticateToken, async (req, res) =>
   }
 });
 
-app.patch('/api/listening-sessions/:id', async (req, res) => {
+app.patch('/api/listening-sessions/:id', authenticateToken, async (req, res) => {
   try {
     const session = await findListeningSessionByParam(req.params.id);
-
     if (!session) {
       return res.status(404).json({ error: 'Listening session not found' });
+    }
+    const canAccess = await checkListeningSessionAccess(req, session);
+    if (!canAccess) {
+      return res.status(403).json({ error: 'Access denied. You can only access your own listening sessions.' });
     }
 
     const {
@@ -11525,11 +11594,15 @@ app.patch('/api/listening-sessions/:id', async (req, res) => {
   }
 });
 
-app.post('/api/listening-sessions/:id/end', async (req, res) => {
+app.post('/api/listening-sessions/:id/end', authenticateToken, async (req, res) => {
   try {
     const session = await findListeningSessionByParam(req.params.id);
     if (!session) {
       return res.status(404).json({ error: 'Listening session not found' });
+    }
+    const canAccess = await checkListeningSessionAccess(req, session);
+    if (!canAccess) {
+      return res.status(403).json({ error: 'Access denied. You can only access your own listening sessions.' });
     }
 
     const endedAt = req.body?.endedAt ? new Date(req.body.endedAt) : new Date();
@@ -11558,8 +11631,8 @@ app.post('/api/listening-sessions/:id/end', async (req, res) => {
   }
 });
 
-// Get historical sessions grouped by date
-app.get('/api/listening-sessions/history', async (req, res) => {
+// Get historical sessions grouped by date - Phase 1: auth + ownership (teachers own sessions only)
+app.get('/api/listening-sessions/history', authenticateToken, async (req, res) => {
   try {
     const { days = 30, date } = req.query;
     // OPTIMIZED: Cap limit at 500 to prevent memory issues
@@ -11608,14 +11681,18 @@ app.get('/api/listening-sessions/history', async (req, res) => {
   }
 });
 
-// Delete listening session(s)
-app.delete('/api/listening-sessions/:id', async (req, res) => {
+// Delete listening session(s) - Phase 1: auth + ownership
+app.delete('/api/listening-sessions/:id', authenticateToken, async (req, res) => {
   try {
     const session = await findListeningSessionByParam(req.params.id);
     if (!session) {
       return res.status(404).json({ error: 'Listening session not found' });
     }
-    
+    const canAccess = await checkListeningSessionAccess(req, session);
+    if (!canAccess) {
+      return res.status(403).json({ error: 'Access denied. You can only delete your own listening sessions.' });
+    }
+
     await ListeningSession.findByIdAndDelete(session._id);
     broadcastListeningSessionEvent('session_deleted', { id: session._id.toString() });
     
@@ -11626,9 +11703,13 @@ app.delete('/api/listening-sessions/:id', async (req, res) => {
   }
 });
 
-// Delete listening sessions by date
-app.delete('/api/listening-sessions/date/:date', async (req, res) => {
+// Delete listening sessions by date - Phase 1: auth + admin/superadmin only (bulk delete)
+app.delete('/api/listening-sessions/date/:date', authenticateToken, async (req, res) => {
   try {
+    const role = (req.user.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Only Admin or Super Admin can delete sessions by date.' });
+    }
     const { date } = req.params;
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
@@ -12033,24 +12114,21 @@ app.post('/api/weekly-evaluations', authenticateToken, requirePermission('canCre
   }
 });
 
-// PUT /api/weekly-evaluations/:id - Update draft evaluation (Teacher only)
+// PUT /api/weekly-evaluations/:id - Update draft evaluation; Phase 1: ownership OR canCreateEvaluations
 app.put('/api/weekly-evaluations/:id', authenticateToken, async (req, res) => {
   try {
-    // Role check: Only teachers can update evaluations
-    if (req.user.role !== 'teacher') {
-      return res.status(403).json({ error: 'Access denied. Only teachers can update evaluations.' });
-    }
-
     const { id } = req.params;
     const evaluation = await WeeklyEvaluation.findOne({ id });
-    
     if (!evaluation) {
       return res.status(404).json({ error: 'Evaluation not found' });
     }
 
-    // Verify teacher owns this evaluation
-    if (evaluation.teacherId !== req.user.userId.toString()) {
-      return res.status(403).json({ error: 'Access denied. You can only update your own evaluations.' });
+    const isOwner = evaluation.teacherId === (req.user.userId && req.user.userId.toString());
+    const isAdminOrSuper = (req.user.role || '').toLowerCase() === 'admin' || (req.user.role || '').toLowerCase() === 'superadmin';
+    const hasCreateEval = req.user.permissions && (req.user.permissions['*'] === true || req.user.permissions.canCreateEvaluations === true);
+    const canUpdate = isOwner || (isAdminOrSuper && hasCreateEval);
+    if (!canUpdate) {
+      return res.status(403).json({ error: 'Access denied. You can only update your own evaluations or need canCreateEvaluations.' });
     }
 
     // Only allow updates if status is draft (strict workflow enforcement)
@@ -13171,8 +13249,8 @@ app.get('/api/students/:studentId/homework-suggestions', authenticateToken, vali
 // AI SUGGESTIONS API ENDPOINTS
 // ============================================
 
-// Get AI suggestions for a specific field
-app.post('/api/ai/suggestions', async (req, res) => {
+// Get AI suggestions for a specific field - Phase 1: require auth
+app.post('/api/ai/suggestions', authenticateToken, async (req, res) => {
   try {
     const { fieldType, context, studentName, currentValue } = req.body;
 
@@ -14109,8 +14187,8 @@ app.post('/api/ai/phrases/:id/use', async (req, res) => {
   }
 });
 
-// Initialize default categories (run once)
-app.post('/api/ai/phrases/init-categories', async (req, res) => {
+// Initialize default categories (run once) - Phase 1: auth; admin/superadmin only
+app.post('/api/ai/phrases/init-categories', authenticateToken, requireAdminOrSuperadmin, async (req, res) => {
   try {
     const defaultCategories = [
       { name: 'progress_report', displayName: 'Progress Report', description: 'Phrases for student progress reports', isSystem: true },

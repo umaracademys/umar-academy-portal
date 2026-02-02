@@ -628,7 +628,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           ]);
           
           if (usersResponse.status === 'fulfilled' && usersResponse.value.ok) {
-            users = await usersResponse.value.json();
+            const usersPayload = await usersResponse.value.json();
+            users = Array.isArray(usersPayload) ? usersPayload : (usersPayload.users || []);
           if (import.meta.env.DEV) {
               console.log('👥 Users loaded from backend:', users.length);
           }
@@ -638,7 +639,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           }
           
           if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
-            teacherRecords = await teachersResponse.value.json();
+            const teachersPayload = await teachersResponse.value.json();
+            teacherRecords = Array.isArray(teachersPayload) ? teachersPayload : (teachersPayload.teachers || []);
           if (import.meta.env.DEV) {
               console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
             }
@@ -705,7 +707,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           try {
             const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 3000, true);
             if (usersResponse.ok) {
-              users = await usersResponse.json();
+              const usersPayload = await usersResponse.json();
+              users = Array.isArray(usersPayload) ? usersPayload : (usersPayload.users || []);
               if (import.meta.env.DEV) {
                 console.log('👥 Users loaded for teacher-student-assignment:', users.length);
               }
@@ -1673,7 +1676,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           }
           
           if (adminsResponse.ok) {
-            const adminRecords = await adminsResponse.json();
+            const adminsPayload = await adminsResponse.json();
+            const adminRecords = Array.isArray(adminsPayload) ? adminsPayload : (adminsPayload.admins || []);
             if (import.meta.env.DEV) {
               console.log('👨‍💼 Admin records loaded:', adminRecords.length);
             }
@@ -2786,11 +2790,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       // Load users for mapping (needed for student/teacher data)
       const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 5000, false).catch(() => null);
-      const users = usersResponse?.ok ? await usersResponse.json() : [];
+      const usersPayload = usersResponse?.ok ? await usersResponse.json() : [];
+      const users = Array.isArray(usersPayload) ? usersPayload : (usersPayload.users || []);
 
       // Process students
       if (studentsResponse?.ok) {
-        const studentRecords = await studentsResponse.json();
+        const studentsPayload = await studentsResponse.json();
+        const studentRecords = Array.isArray(studentsPayload) ? studentsPayload : (studentsPayload.students || []);
         const studentsData = studentRecords.map((studentRecord: any) => {
           const userId = studentRecord.userId?._id || studentRecord.userId || studentRecord.userId?._id?.toString();
           const user = users.find((u: any) => 
@@ -2841,7 +2847,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       // Process teachers
       if (teachersResponse?.ok) {
-        const teacherRecords = await teachersResponse.json();
+        const teachersPayload = await teachersResponse.json();
+        const teacherRecords = Array.isArray(teachersPayload) ? teachersPayload : (teachersPayload.teachers || []);
         const teachersData = users
           .filter((user: any) => user.role === 'teacher')
           .map((user: any) => {
