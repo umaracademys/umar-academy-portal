@@ -1676,10 +1676,13 @@ const recitationHistorySchema = new mongoose.Schema({
 }, { _id: false });
 
 // Phase 3: Schema drift detection helper
+// Note: Pre-save hooks do not have access to req (route/userId); document context only
 const logDroppedFields = (modelName, document, droppedFields) => {
   if (droppedFields && droppedFields.length > 0) {
-    console.error(`❌ SCHEMA DRIFT DETECTED [${modelName}]:`, {
-      documentId: document._id || document.id,
+    const docId = document._id?.toString() || document.id;
+    const refId = document.userId?.toString() || document.studentId || document.teacherId || 'N/A';
+    console.error(`❌ SCHEMA DRIFT [${modelName}] docId=${docId} refId=${refId}:`, {
+      documentId: docId,
       droppedFields: droppedFields,
       timestamp: new Date().toISOString()
     });
@@ -1702,6 +1705,7 @@ const studentSchema = new mongoose.Schema({
   level: String,
   paymentStatus: String,
   enrollmentDate: Date,
+  // DECISION DEFERRED (C3): ref:'Course' but no Course model exists. Field is read by frontend, not written. See docs/SCHEMA_DECISIONS.md
   courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
   assignedTeacher: String, // Teacher ID or name who is assigned to this student (legacy - kept for backward compatibility)
   assignedTeacherId: String, // Teacher ID (for easier lookup) (legacy - kept for backward compatibility)
@@ -1755,8 +1759,8 @@ studentSchema.pre('save', function(next) {
   
   if (unknownFields.length > 0) {
     logDroppedFields('Student', doc, unknownFields);
-    // Note: We're not throwing an error (strict mode not enabled yet)
-    // This is just for detection and logging
+    // M1: Strict rejection not used to avoid breaking writes during schema migration. Unknown fields
+    // are logged for monitoring; consider enabling strict mode after data cleanup.
   }
   
   next();
@@ -1942,6 +1946,7 @@ const teacherSchema = new mongoose.Schema({
   },
   hireDate: Date,
   avatar: String,
+  // DECISION DEFERRED (C3): ref:'Course' but no Course model exists. Field is read by frontend, not written. See docs/SCHEMA_DECISIONS.md
   courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }]
 }, { timestamps: true });
 
@@ -2977,9 +2982,13 @@ app.get('/api/activity-logs', apiLimiter, authenticateToken, async (req, res) =>
       ipAddress, 
       startDate, 
       endDate, 
-      limit = 100,
-      page = 1 
+      limit: rawLimit,
+      page: rawPage 
     } = req.query;
+
+    // H4: Cap limit to prevent unbounded queries (max 500)
+    const limit = Math.min(parseInt(rawLimit, 10) || 100, 500);
+    const page = Math.max(1, parseInt(rawPage, 10) || 1);
 
     // Build query
     const query = {};
@@ -2995,11 +3004,11 @@ app.get('/api/activity-logs', apiLimiter, authenticateToken, async (req, res) =>
       if (endDate) query.timestamp.$lte = new Date(endDate);
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (page - 1) * limit;
     
     const logs = await ActivityLog.find(query)
       .sort({ timestamp: -1 })
-      .limit(parseInt(limit))
+      .limit(limit)
       .skip(skip)
       .lean();
 
@@ -3008,10 +3017,10 @@ app.get('/api/activity-logs', apiLimiter, authenticateToken, async (req, res) =>
     res.json({
       logs,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page,
+        limit,
         total,
-        pages: Math.ceil(total / parseInt(limit))
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
@@ -3196,7 +3205,8 @@ app.get('/api/activity-logs/stats', apiLimiter, authenticateToken, async (req, r
   }
 });
 
-// Get all users - Phase 1: restricted to admin/superadmin or canManageTeachers; students never; pagination
+// Get all users - Phase 1: restricted to admin/superadmin or canManageTeachers; students never
+// H6: Pagination capped via parseListPagination(req, 50, 200)
 app.get('/api/users', combinedListEndpointLimiter, authenticateToken, requireUsersListAccess, async (req, res) => {
   try {
     if (mongoose.connection.readyState !== 1) {
@@ -3309,7 +3319,8 @@ app.get('/api/users/locked', authenticateToken, async (req, res) => {
   }
 });
 
-// Get a single user by ID (no password) - Phase 1: self or admin/superadmin only
+// Get a single user by ID (no password)
+// H3 ACCESS: Self (own userId) OR admin/superadmin allowed; all others → 403
 app.get('/api/users/:id', apiLimiter, authenticateToken, async (req, res) => {
   try {
     const targetId = req.params.id;
@@ -3331,7 +3342,8 @@ app.get('/api/users/:id', apiLimiter, authenticateToken, async (req, res) => {
   }
 });
 
-// Get all students - Phase 1: require canManageStudents; pagination
+// Get all students - Phase 1: require canManageStudents
+// H6: Pagination capped via parseListPagination(req, 50, 200)
 app.get('/api/students', combinedListEndpointLimiter, authenticateToken, requirePermission('canManageStudents'), async (req, res) => {
   try {
     const { page, limit, skip } = parseListPagination(req, 50, 200);
@@ -3642,7 +3654,8 @@ const syncTeacherAssignedStudents = async () => {
   }
 };
 
-// Get all teachers - Phase 1: canManageTeachers + pagination (default 50, max 200)
+// Get all teachers - Phase 1: canManageTeachers
+// H6: Pagination capped via parseListPagination(req, 50, 200)
 app.get('/api/teachers', combinedListEndpointLimiter, authenticateToken, requirePermission('canManageTeachers'), async (req, res) => {
   try {
     const syncOnLoad = req.query.sync === 'true';
@@ -4657,7 +4670,8 @@ const normalizeTeacherData = (teacherData) => {
   return normalized;
 };
 
-// Get all admins - Phase 1: admin/superadmin only; pagination
+// Get all admins - Phase 1: admin/superadmin only
+// H6: Pagination capped via parseListPagination(req, 50, 200)
 app.get('/api/admins', combinedListEndpointLimiter, authenticateToken, requireAdminOrSuperadmin, async (req, res) => {
   try {
     const { page, limit, skip } = parseListPagination(req, 50, 200);
@@ -5764,7 +5778,8 @@ app.post('/api/teacher-attendance/bulk', authenticateToken, requirePermission('c
   }
 });
 
-// Get attendance records with filters - Phase 1: admins require canManageAttendance
+// Get attendance records with filters
+// H8 ACCESS: Teachers see only their own shared attendance; admins require canManageAttendance; superadmin has full access
 app.get('/api/teacher-attendance', authenticateToken, async (req, res) => {
   try {
     const { teacherId, date, startDate, endDate, month, year, employmentType } = req.query;
@@ -5824,7 +5839,8 @@ app.get('/api/teacher-attendance', authenticateToken, async (req, res) => {
   }
 });
 
-// Get attendance for specific teacher - Phase 1: admins require canManageAttendance
+// Get attendance for specific teacher
+// H8 ACCESS: validateTeacherOwnership ensures teachers see only self; admins require canManageAttendance
 app.get('/api/teacher-attendance/teacher/:teacherId', authenticateToken, validateTeacherOwnership, async (req, res) => {
   try {
     const { teacherId } = req.params;
@@ -5874,7 +5890,8 @@ app.get('/api/teacher-attendance/teacher/:teacherId', authenticateToken, validat
   }
 });
 
-// Get attendance statistics for a teacher - Phase 1: admins require canManageAttendance
+// Get attendance statistics for a teacher
+// H8 ACCESS: Admins require canManageAttendance; teachers see own stats via ownership check in handler
 app.get('/api/teacher-attendance/stats/:teacherId', authenticateToken, async (req, res) => {
   try {
     const { teacherId } = req.params;
@@ -6489,7 +6506,8 @@ app.post('/api/users/:id/unlock', authenticateToken, requirePermission('canManag
   }
 });
 
-// Get user details including settings - Phase 1: self or admin/superadmin only
+// Get user details including settings
+// H3 ACCESS: Self (own userId) OR admin/superadmin allowed; all others → 403
 app.get('/api/users/:id/details', authenticateToken, async (req, res) => {
   try {
     const targetId = req.params.id;
@@ -6533,7 +6551,7 @@ app.get('/api/users/:id/details', authenticateToken, async (req, res) => {
       loginEnabled: targetUser.loginEnabled !== false,
       twoFactorEnabled: targetUser.twoFactorEnabled || false,
       emailNotifications: targetUser.emailNotifications !== false,
-      smsNotifications: user.smsNotifications || false,
+      smsNotifications: targetUser.smsNotifications || false,
       emailVerified: !!targetUser.email,
       phoneVerified: !!targetUser.contact || !!targetUser.phoneNumber,
       isLocked,
@@ -7563,8 +7581,8 @@ const enforceMistakeHistoryLimit = (session, limit = 50) => {
 
 
 
-// Recitation Review Routes
-app.get('/api/recitation-reviews', combinedListEndpointLimiter, authenticateToken, async (req, res) => {
+// Recitation Review Routes - H5: require canViewEvaluations to list reviews
+app.get('/api/recitation-reviews', combinedListEndpointLimiter, authenticateToken, requirePermission('canViewEvaluations'), async (req, res) => {
   try {
     // OPTIMIZED: Add pagination to prevent memory exhaustion on large datasets
     const { page = 1, limit = 50 } = req.query;

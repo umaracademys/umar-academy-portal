@@ -18,8 +18,9 @@ export const UserCard: React.FC<UserCardProps> = React.memo(({
   isChecked = false,
   onCheck,
 }) => {
+  const displayName = user.fullName || user.name || 'User';
   const avatar = user.avatar || 
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=${isSelected ? '6366F1' : 'E5E7EB'}&color=${isSelected ? 'fff' : '111827'}`;
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=${isSelected ? '6366F1' : 'E5E7EB'}&color=${isSelected ? 'fff' : '111827'}`;
 
   const handleCheckboxClick = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -52,13 +53,13 @@ export const UserCard: React.FC<UserCardProps> = React.memo(({
       )}
       <img
         src={avatar}
-        alt={user.fullName}
+        alt={displayName}
         className="w-10 h-10 rounded-full border-2 border-gray-200 flex-shrink-0"
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-gray-900 truncate">
-            {user.fullName}
+            {displayName}
           </p>
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${

@@ -36,7 +36,7 @@ export const UserList: React.FC<UserListProps> = React.memo(({
     const query = debouncedSearch.toLowerCase();
     return users.filter(
       (user) =>
-        user.fullName.toLowerCase().includes(query) ||
+        (user.fullName || user.name || '').toLowerCase().includes(query) ||
         user.email.toLowerCase().includes(query)
     );
   }, [users, debouncedSearch]);

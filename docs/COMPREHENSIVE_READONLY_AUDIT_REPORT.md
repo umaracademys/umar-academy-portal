@@ -296,14 +296,61 @@
 
 ---
 
-# NEXT STEPS (NO CHANGES APPLIED)
+# REMEDIATION STATUS (Updated 2025-02-01)
 
-1. Review this report and approve which findings to address.  
-2. Prioritize Critical (C1–C6), then High (H1–H10).  
-3. For schema changes (C3, H1, M5, M7, etc.): agree on strategy, then implement with migration plan.  
-4. For routes: add auth and permission guards per recommendation; add pagination/caps where noted.  
-5. Re-run permissions and role-consistency audits after any user/role/schema changes.
+## Critical — Status
+
+| ID | Finding | Status |
+|----|---------|--------|
+| C1 | GET /api/users exposed to any auth user | ✅ **Fixed** — `requireUsersListAccess` blocks students; requires admin/superadmin or canManageTeachers |
+| C2 | Listening session endpoints no auth | ✅ **Fixed** — All endpoints use `authenticateToken` |
+| C3 | Student/Teacher `courses` ref to non-existent Course | ⏳ **Pending** — Schema/product decision required |
+| C4 | GET /api/students, /api/admins no permission | ✅ **Fixed** — `canManageStudents` and `requireAdminOrSuperadmin` in place |
+| C5 | PUT /api/users/:id no permission/ownership | ✅ **Fixed** — Handler enforces self-update or admin + canManageTeachers |
+| C6 | POST /api/ai/suggestions no auth | ✅ **Fixed** — `authenticateToken` in place |
+
+## High — Status
+
+| ID | Finding | Status |
+|----|---------|--------|
+| H1 | User fullName vs name | ✅ **Fixed** — Defensive fallbacks (fullName \|\| name) in frontend; documented |
+| H2 | POST /api/tickets/bulk-delete | ✅ **Fixed** — `requirePermission('canManageTicketWorkflow')` |
+| H3 | GET /api/users/:id & /details | ✅ **Fixed** — Self or admin/superadmin only; comments added |
+| H4 | Activity log unbounded limit | ✅ **Fixed** — limit capped at 500 |
+| H5 | GET /api/recitation-reviews no permission | ✅ **Fixed** — `requirePermission('canViewEvaluations')` |
+| H6 | Unbounded list endpoints | ✅ **Fixed** — All use parseListPagination(50, 200); comments added |
+| H7 | PUT /api/weekly-evaluations/:id | ✅ **Fixed** — Ownership + canCreateEvaluations in handler |
+| H8 | Teacher attendance visibility | ✅ **Fixed** — Teachers scoped; admins need canManageAttendance; comments added |
+| H9 | POST /api/ai/phrases/init-categories | ✅ **Fixed** — `authenticateToken` + `requireAdminOrSuperadmin` |
+| H10 | ActivityLog email regex index | ⏳ **Deferred** — Confirm index; no schema change |
+
+## Medium — Status (Phase 2)
+
+| ID | Finding | Status |
+|----|---------|--------|
+| M1 | Student schema drift logging | ✅ **Fixed** — Improved log clarity; comment on strict rejection |
+| M5 | User.role enum | ⏳ **Deferred** — Documented in docs/SECURITY_MODEL.md; no enum yet |
+| M7 | tajweedIssues enum consistency | ⏳ **Deferred** — Documented in docs/SECURITY_MODEL.md; no schema change |
+| M2–M4, M6, M8–M12 | Other medium | ⏳ See original report |
+
+## Deferred (Document Only)
+
+- **C3:** courses field — see docs/SCHEMA_DECISIONS.md
+- **M5:** Canonical roles — see docs/SECURITY_MODEL.md
+- **M7:** tajweedIssues enum diff — see docs/SECURITY_MODEL.md
+
+## Rejected by Design
+
+- (None in this audit)
 
 ---
 
-*End of report. No data or schema changes have been made.*
+# NEXT STEPS
+
+1. **C3 (Schema):** Decide Course model strategy — define Course or remove `courses` from Student/Teacher schemas.  
+2. **H10, M8, L8:** Review index recommendations with production query patterns.  
+3. Re-run permissions and role-consistency audits after any user/role/schema changes.
+
+---
+
+*Report updated 2025-02-01. Phase 2: production readiness, documentation, and decision hardening. See docs/PRODUCTION_READINESS.md and docs/SECURITY_MODEL.md.*

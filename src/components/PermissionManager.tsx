@@ -1592,13 +1592,13 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose, onUpdate
           results.push({
             success: true,
             userId: user.id,
-            userName: user.fullName,
+            userName: user.fullName || user.name || 'Unknown',
           });
         } catch (error) {
           results.push({
             success: false,
             userId: user.id,
-            userName: user.fullName,
+            userName: user.fullName || user.name || 'Unknown',
             error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
@@ -1988,7 +1988,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose, onUpdate
                       <label key={user.id} className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition ${selectedUsers.has(user.id) ? 'bg-primary/10 border border-primary/30' : 'bg-white border border-transparent hover:bg-gray-50'}`}>
                         <input type="checkbox" checked={selectedUsers.has(user.id)} onChange={() => toggleUserSelection(user.id)} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{user.fullName}</p>
+                          <p className="text-sm font-medium text-gray-900 truncate">{user.fullName || user.name || 'Unknown'}</p>
                           <p className="text-xs text-gray-500 truncate">{user.email}</p>
                         </div>
                       </label>
